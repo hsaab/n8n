@@ -59,4 +59,11 @@ export class InsightsConfig {
 	 */
 	@Env('N8N_INSIGHTS_PRUNE_CHECK_INTERVAL_HOURS')
 	pruneCheckIntervalHours: number = 24;
+
+	/**
+	 * Enables the local demo Insights Analyst workspace and its seeded dataset.
+	 * Default: false
+	 */
+	@Env('N8N_DEMO_INSIGHTS_ANALYST')
+	demoAnalyst: boolean = false;
 }

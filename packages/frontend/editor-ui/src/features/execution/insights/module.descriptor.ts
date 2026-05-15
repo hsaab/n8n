@@ -5,6 +5,8 @@ import { VIEWS } from '@/app/constants';
 
 const InsightsDashboard = async () =>
 	await import('@/features/execution/insights/components/InsightsDashboard.vue');
+const InsightsAnalystDashboard = async () =>
+	await import('@/features/execution/insights/components/InsightsAnalystDashboard.vue');
 
 export const InsightsModule: FrontendModuleDescription = {
 	id: 'insights',
@@ -28,6 +30,15 @@ export const InsightsModule: FrontendModuleDescription = {
 				},
 			},
 			children: [
+				{
+					path: 'analyst',
+					name: VIEWS.INSIGHTS_ANALYST,
+					beforeEnter() {
+						const insightsStore = useInsightsStore();
+						return insightsStore.isDemoAnalystEnabled || { name: VIEWS.NOT_FOUND };
+					},
+					component: InsightsAnalystDashboard,
+				},
 				{
 					path: ':insightType?',
 					name: VIEWS.INSIGHTS,

@@ -1,12 +1,18 @@
 import type {
+	InsightsAnalystChatResponse,
+	InsightsAnalystOverview,
 	InsightsByTime,
 	InsightsByWorkflow,
 	InsightsSummary,
 	RestrictedInsightsByTime,
 } from '@n8n/api-types';
-import { InsightsDateFilterDto, ListInsightsWorkflowQueryDto } from '@n8n/api-types';
+import {
+	InsightsAnalystChatRequestDto,
+	InsightsDateFilterDto,
+	ListInsightsWorkflowQueryDto,
+} from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
-import { Get, GlobalScope, Licensed, Query, RestController } from '@n8n/decorators';
+import { Body, Get, GlobalScope, Licensed, Post, Query, RestController } from '@n8n/decorators';
 import { DateTime } from 'luxon';
 import { UserError } from 'n8n-workflow';
 import { z } from 'zod';
@@ -15,11 +21,15 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 
+import { InsightsDemoService } from './insights-demo.service';
 import { InsightsService } from './insights.service';
 
 @RestController('/insights')
 export class InsightsController {
-	constructor(private readonly insightsService: InsightsService) {}
+	constructor(
+		private readonly insightsService: InsightsService,
+		private readonly insightsDemoService: InsightsDemoService,
+	) {}
 
 	@Get('/summary')
 	@GlobalScope('insights:list')
@@ -99,6 +109,39 @@ export class InsightsController {
 		})) as RestrictedInsightsByTime[];
 	}
 
+	@Get('/demo/overview')
+	@GlobalScope('insights:list')
+	async getInsightsAnalystOverview(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Query query: InsightsDateFilterDto = {},
+	): Promise<InsightsAnalystOverview> {
+		const { startDate, endDate } = this.prepareDemoDateFilters(query);
+
+		return await this.insightsDemoService.getOverview({
+			startDate,
+			endDate,
+			projectId: query.projectId,
+		});
+	}
+
+	@Post('/demo/analyst-chat')
+	@GlobalScope('insights:list')
+	async askInsightsAnalyst(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Body body: InsightsAnalystChatRequestDto,
+	): Promise<InsightsAnalystChatResponse> {
+		const { startDate, endDate } = this.prepareDemoDateFilters(body);
+
+		return await this.insightsDemoService.answerQuestion({
+			prompt: body.prompt,
+			startDate,
+			endDate,
+			projectId: body.projectId,
+		});
+	}
+
 	private validateQueryDates(query: InsightsDateFilterDto | ListInsightsWorkflowQueryDto) {
 		const schema = z
 			.object({
@@ -132,6 +175,14 @@ export class InsightsController {
 		const { startDate, endDate } = this.getSanitizedDateFilters(query);
 		this.checkDatesFiltersAgainstLicense({ startDate, endDate });
 		return { startDate, endDate };
+	}
+
+	private prepareDemoDateFilters(query: InsightsDateFilterDto): {
+		startDate: Date;
+		endDate: Date;
+	} {
+		this.validateQueryDates(query);
+		return this.getSanitizedDateFilters(query);
 	}
 
 	/**

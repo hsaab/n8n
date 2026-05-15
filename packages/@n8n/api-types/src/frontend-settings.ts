@@ -260,11 +260,13 @@ export type FrontendModuleSettings = {
 	 * - `summary`: Whether the summary banner should be shown.
 	 * - `dashboard`: Whether the full dashboard should be shown.
 	 * - `dateRanges`: Date range filters available to select.
+	 * - `demoAnalyst`: Whether the demo Insights Analyst workspace should be shown.
 	 */
 	insights?: {
 		summary: boolean;
 		dashboard: boolean;
 		dateRanges: InsightsDateRange[];
+		demoAnalyst?: boolean;
 	};
 
 	/**

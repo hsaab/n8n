@@ -166,6 +166,12 @@ export {
 	type InsightsByTime,
 	type InsightsDateRange,
 	type RestrictedInsightsByTime,
+	type InsightsAnalystWorkflow,
+	type InsightsAnalystHighlight,
+	type InsightsAnalystOverview,
+	type InsightsAnalystChatRequest,
+	type InsightsAnalystCitation,
+	type InsightsAnalystChatResponse,
 } from './schemas/insights.schema';
 
 export {

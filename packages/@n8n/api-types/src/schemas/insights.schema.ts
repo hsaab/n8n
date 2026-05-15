@@ -108,3 +108,85 @@ export const insightsDateRangeSchema = z
 	})
 	.strict();
 export type InsightsDateRange = z.infer<typeof insightsDateRangeSchema>;
+
+const insightsAnalystToneSchema = z.enum(['positive', 'warning', 'neutral']);
+export type InsightsAnalystTone = z.infer<typeof insightsAnalystToneSchema>;
+
+export const insightsAnalystWorkflowSchema = z
+	.object({
+		workflowId: z.string(),
+		workflowName: z.string(),
+		projectId: z.string(),
+		projectName: z.string(),
+		total: z.number(),
+		succeeded: z.number(),
+		failed: z.number(),
+		failureRate: z.number(),
+		runTime: z.number(),
+		averageRunTime: z.number(),
+		timeSaved: z.number(),
+		timeSavedPerExecution: z.number(),
+		trend: z.enum(['improving', 'degrading', 'stable']),
+		riskLevel: z.enum(['low', 'medium', 'high']),
+		story: z.string(),
+	})
+	.strict();
+export type InsightsAnalystWorkflow = z.infer<typeof insightsAnalystWorkflowSchema>;
+
+export const insightsAnalystHighlightSchema = z
+	.object({
+		id: z.string(),
+		title: z.string(),
+		value: z.string(),
+		description: z.string(),
+		tone: insightsAnalystToneSchema,
+	})
+	.strict();
+export type InsightsAnalystHighlight = z.infer<typeof insightsAnalystHighlightSchema>;
+
+export const insightsAnalystOverviewSchema = z
+	.object({
+		generatedAt: z.string(),
+		dateRange: z
+			.object({
+				startDate: z.string(),
+				endDate: z.string(),
+			})
+			.strict(),
+		summary: insightsSummarySchema,
+		byTime: z.array(insightsByTimeSchema),
+		workflows: z.array(insightsAnalystWorkflowSchema),
+		highlights: z.array(insightsAnalystHighlightSchema),
+		suggestedPrompts: z.array(z.string()),
+	})
+	.strict();
+export type InsightsAnalystOverview = z.infer<typeof insightsAnalystOverviewSchema>;
+
+export const insightsAnalystChatRequestSchema = z
+	.object({
+		prompt: z.string().min(1),
+		startDate: z.coerce.date().optional(),
+		endDate: z.coerce.date().optional(),
+		projectId: z.string().optional(),
+	})
+	.strict();
+export type InsightsAnalystChatRequest = z.infer<typeof insightsAnalystChatRequestSchema>;
+
+export const insightsAnalystCitationSchema = z
+	.object({
+		label: z.string(),
+		value: z.string(),
+		description: z.string().optional(),
+		workflowId: z.string().optional(),
+	})
+	.strict();
+export type InsightsAnalystCitation = z.infer<typeof insightsAnalystCitationSchema>;
+
+export const insightsAnalystChatResponseSchema = z
+	.object({
+		answer: z.string(),
+		citations: z.array(insightsAnalystCitationSchema),
+		followUpPrompts: z.array(z.string()),
+	})
+	.strict();
+export type InsightsAnalystChatResponse = z.infer<typeof insightsAnalystChatResponseSchema>;

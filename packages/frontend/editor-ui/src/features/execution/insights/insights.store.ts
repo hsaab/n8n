@@ -22,6 +22,8 @@ export const useInsightsStore = defineStore('insights', () => {
 
 	const isDashboardEnabled = computed(() => !!settingsStore.moduleSettings.insights?.dashboard);
 
+	const isDemoAnalystEnabled = computed(() => !!settingsStore.moduleSettings.insights?.demoAnalyst);
+
 	const isSummaryEnabled = computed(
 		() => globalInsightsPermissions.value.list && isInsightsEnabled.value,
 	);
@@ -73,6 +75,7 @@ export const useInsightsStore = defineStore('insights', () => {
 		isInsightsEnabled,
 		isSummaryEnabled,
 		isDashboardEnabled,
+		isDemoAnalystEnabled,
 		weeklySummary,
 		summary,
 		charts,

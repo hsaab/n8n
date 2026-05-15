@@ -6,6 +6,9 @@ import type {
 	InsightsByWorkflow,
 	ListInsightsWorkflowQueryDto,
 	InsightsDateFilterDto,
+	InsightsAnalystChatRequest,
+	InsightsAnalystChatResponse,
+	InsightsAnalystOverview,
 } from '@n8n/api-types';
 
 type SerializedDateFilter<T> = Omit<T, 'startDate' | 'endDate'> & {
@@ -64,3 +67,15 @@ export const fetchInsightsByWorkflow = async (
 		'/insights/by-workflow',
 		serializeInsightsFilter(filter),
 	);
+
+export const fetchInsightsAnalystOverview = async (
+	context: IRestApiContext,
+	filter?: InsightsDateFilterDto,
+): Promise<InsightsAnalystOverview> =>
+	await makeRestApiRequest(context, 'GET', '/insights/demo/overview', serializeInsightsFilter(filter));
+
+export const askInsightsAnalyst = async (
+	context: IRestApiContext,
+	body: InsightsAnalystChatRequest,
+): Promise<InsightsAnalystChatResponse> =>
+	await makeRestApiRequest(context, 'POST', '/insights/demo/analyst-chat', serializeInsightsFilter(body));

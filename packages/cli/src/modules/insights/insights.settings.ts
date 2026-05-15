@@ -2,16 +2,21 @@ import { LicenseState } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 
 import { INSIGHTS_DATE_RANGE_KEYS, keyRangeToDays } from './insights.constants';
+import { InsightsConfig } from './insights.config';
 
 @Service()
 export class InsightsSettings {
-	constructor(private readonly licenseState: LicenseState) {}
+	constructor(
+		private readonly licenseState: LicenseState,
+		private readonly insightsConfig: InsightsConfig,
+	) {}
 
 	settings() {
 		return {
 			summary: this.licenseState.isInsightsSummaryLicensed(),
 			dashboard: this.licenseState.isInsightsDashboardLicensed(),
 			dateRanges: this.getAvailableDateRanges(),
+			demoAnalyst: this.insightsConfig.demoAnalyst,
 		};
 	}
 
