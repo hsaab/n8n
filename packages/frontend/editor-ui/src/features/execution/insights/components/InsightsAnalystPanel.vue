@@ -6,7 +6,7 @@ import type { InsightsAnalystCitation } from '@n8n/api-types';
 
 import ChatInputBase from '@/features/ai/shared/components/ChatInputBase.vue';
 
-export type AnalystMessage = {
+type AnalystMessage = {
 	id: string;
 	role: 'user' | 'assistant';
 	content: string;

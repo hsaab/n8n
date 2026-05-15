@@ -1,4 +1,10 @@
-import { Z } from '../../zod-class';
-import { insightsAnalystChatRequestSchema } from '../../schemas/insights.schema';
+import { z } from 'zod';
 
-export class InsightsAnalystChatRequestDto extends Z.class(insightsAnalystChatRequestSchema) {}
+import { Z } from '../../zod-class';
+
+export class InsightsAnalystChatRequestDto extends Z.class({
+	prompt: z.string().min(1),
+	startDate: z.coerce.date().optional(),
+	endDate: z.coerce.date().optional(),
+	projectId: z.string().optional(),
+}) {}

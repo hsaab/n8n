@@ -1,4 +1,7 @@
 import {
+	insightsAnalystChatRequestSchema,
+	insightsAnalystChatResponseSchema,
+	insightsAnalystOverviewSchema,
 	insightsByTimeSchema,
 	insightsByWorkflowSchema,
 	insightsDateRangeSchema,
@@ -318,5 +321,119 @@ describe('insightsDateRangeSchema', () => {
 	])('should validate $name', ({ value, expected }) => {
 		const result = insightsDateRangeSchema.safeParse(value);
 		expect(result.success).toBe(expected);
+	});
+});
+
+describe('insightsAnalystOverviewSchema', () => {
+	const validOverview = {
+		generatedAt: '2025-03-25T10:34:36.484Z',
+		dateRange: {
+			startDate: '2025-03-18T10:34:36.484Z',
+			endDate: '2025-03-25T10:34:36.484Z',
+		},
+		summary: {
+			total: { value: 525, deviation: 85, unit: 'count' },
+			failed: { value: 14, deviation: 3, unit: 'count' },
+			failureRate: { value: 0.019, deviation: -0.05, unit: 'ratio' },
+			timeSaved: { value: 540, deviation: 50, unit: 'minute' },
+			averageRunTime: { value: 2500, deviation: -50, unit: 'millisecond' },
+		},
+		byTime: [
+			{
+				date: '2025-03-25T10:34:36.484Z',
+				values: {
+					total: 200,
+					succeeded: 180,
+					failed: 20,
+					failureRate: 0.1,
+					averageRunTime: 40,
+					timeSaved: 100,
+				},
+			},
+		],
+		workflows: [
+			{
+				workflowId: 'workflow-id',
+				workflowName: 'AI Support Triage',
+				projectId: 'project-id',
+				projectName: 'Operations',
+				total: 100,
+				succeeded: 95,
+				failed: 5,
+				failureRate: 0.05,
+				runTime: 3000,
+				averageRunTime: 30,
+				timeSaved: 500,
+				timeSavedPerExecution: 12,
+				trend: 'improving',
+				riskLevel: 'low',
+				story: 'High-impact workflow saving the team time.',
+			},
+		],
+		highlights: [
+			{
+				id: 'top-time-saver',
+				title: 'Highest automation impact',
+				value: 'AI Support Triage',
+				description: '500 minutes saved',
+				tone: 'positive',
+			},
+		],
+		suggestedPrompts: ['Which workflows need attention?'],
+	};
+
+	test.each([
+		{
+			name: 'valid analyst overview',
+			value: validOverview,
+			expected: true,
+		},
+		{
+			name: 'invalid workflow risk level',
+			value: {
+				...validOverview,
+				workflows: [{ ...validOverview.workflows[0], riskLevel: 'critical' }],
+			},
+			expected: false,
+		},
+		{
+			name: 'unexpected overview key',
+			value: {
+				...validOverview,
+				extraKey: true,
+			},
+			expected: false,
+		},
+	])('should validate $name', ({ value, expected }) => {
+		const result = insightsAnalystOverviewSchema.safeParse(value);
+		expect(result.success).toBe(expected);
+	});
+});
+
+describe('insightsAnalystChat schemas', () => {
+	it('validates analyst chat requests', () => {
+		const result = insightsAnalystChatRequestSchema.safeParse({
+			prompt: 'Which workflows saved the most time?',
+			startDate: '2025-03-18T10:34:36.484Z',
+		});
+
+		expect(result.success).toBe(true);
+	});
+
+	it('validates analyst chat responses with citations', () => {
+		const result = insightsAnalystChatResponseSchema.safeParse({
+			answer: 'AI Support Triage saved the most time.',
+			citations: [
+				{
+					label: 'Top time saver',
+					value: 'AI Support Triage',
+					description: '100 runs, 5% failure rate, 500 minutes saved.',
+					workflowId: 'workflow-id',
+				},
+			],
+			followUpPrompts: ['Which workflows need attention?'],
+		});
+
+		expect(result.success).toBe(true);
 	});
 });

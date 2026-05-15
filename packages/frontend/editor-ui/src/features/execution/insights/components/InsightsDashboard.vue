@@ -20,12 +20,13 @@ import {
 	shallowRef,
 	watch,
 } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
+import { VIEWS } from '@/app/constants';
 import { INSIGHT_TYPES } from '../insights.constants';
 import { getAdjustedDateRange, getTimeRangeLabels, timeRangeMappings } from '../insights.utils';
 import InsightsDataRangePicker from './InsightsDataRangePicker.vue';
 
-import { N8nHeading, N8nSpinner } from '@n8n/design-system';
+import { N8nButton, N8nHeading, N8nSpinner } from '@n8n/design-system';
 const InsightsPaywall = defineAsyncComponent(
 	async () => await import('@/features/execution/insights/components/InsightsPaywall.vue'),
 );
@@ -59,6 +60,7 @@ const props = defineProps<{
 }>();
 
 const route = useRoute();
+const router = useRouter();
 const i18n = useI18n();
 
 const insightsStore = useInsightsStore();
@@ -199,6 +201,10 @@ const searchFn = useAvailableProjectSearch();
 const filterFn = (project: ProjectListItem) =>
 	!!project.name && !emailPattern.test(project.name.trim());
 
+async function goToAnalyst() {
+	await router.push({ name: VIEWS.INSIGHTS_ANALYST });
+}
+
 onBeforeMount(async () => {
 	// Members filter locally over myProjects — preload them.
 	// Admins use remote search, so skip the unpaginated GET /projects call.
@@ -234,6 +240,15 @@ onBeforeMount(async () => {
 					:min-value="minimumValue"
 					:presets
 				/>
+
+				<N8nButton
+					v-if="insightsStore.isDemoAnalystEnabled"
+					variant="subtle"
+					size="small"
+					@click="goToAnalyst"
+				>
+					{{ i18n.baseText('insights.analyst.open') }}
+				</N8nButton>
 			</div>
 
 			<InsightsSummary

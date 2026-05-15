@@ -7,7 +7,6 @@ import type {
 	InsightsAnalystChatResponse,
 	InsightsAnalystOverview,
 	InsightsAnalystWorkflow,
-	InsightsSummary,
 } from '@n8n/api-types';
 
 import { VIEWS } from '@/app/constants';
@@ -18,11 +17,19 @@ import {
 	fetchInsightsAnalystOverview,
 } from '@/features/execution/insights/insights.api';
 
-import InsightsAnalystPanel, { type AnalystMessage } from './InsightsAnalystPanel.vue';
+import InsightsAnalystPanel from './InsightsAnalystPanel.vue';
+
+type AnalystMessage = {
+	id: string;
+	role: 'user' | 'assistant';
+	content: string;
+	citations?: InsightsAnalystChatResponse['citations'];
+};
 
 const i18n = useI18n();
 const rootStore = useRootStore();
 const router = useRouter();
+const documentTitle = useDocumentTitle();
 
 const overview = ref<InsightsAnalystOverview | null>(null);
 const isLoading = ref(true);
@@ -35,10 +42,6 @@ const messages = ref<AnalystMessage[]>([
 		content: i18n.baseText('insights.analyst.panel.welcome'),
 	},
 ]);
-
-useDocumentTitle({
-	title: i18n.baseText('insights.analyst.title'),
-});
 
 const summaryCards = computed(() => {
 	if (!overview.value) return [];
@@ -177,7 +180,7 @@ function formatMinutes(value: number) {
 }
 
 function formatDeviation(
-	deviation: InsightsSummary[keyof InsightsSummary]['deviation'],
+	deviation: number | null,
 	unit: 'count' | 'ratio' | 'millisecond' | 'minute',
 ) {
 	if (deviation === null) return i18n.baseText('insights.analyst.metric.noPreviousPeriod');
@@ -189,7 +192,10 @@ function formatDeviation(
 	return `${prefix}${formatCount(deviation)}`;
 }
 
-onMounted(async () => await loadOverview());
+onMounted(async () => {
+	documentTitle.set(i18n.baseText('insights.analyst.title'));
+	await loadOverview();
+});
 </script>
 
 <template>

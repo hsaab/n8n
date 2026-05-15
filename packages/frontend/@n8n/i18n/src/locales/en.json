@@ -5247,6 +5247,7 @@
 	"insights.dashboard.table.estimate": "Estimate",
 	"insights.dashboard.title": "Insights",
 	"insights.analyst.title": "Insights Analyst",
+	"insights.analyst.open": "Open Analyst",
 	"insights.analyst.subtitle": "Seeded workflow analytics and an AI-style analyst for demo-ready operations reviews.",
 	"insights.analyst.refresh": "Refresh data",
 	"insights.analyst.metric.totalRuns": "Production runs",

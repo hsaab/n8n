@@ -344,7 +344,7 @@ export class InsightsDemoService {
 				await manager.save(ProjectRelation, {
 					projectId: project.id,
 					userId: firstUser.id,
-					role: PROJECT_OWNER_ROLE,
+					role: { slug: PROJECT_OWNER_ROLE.slug },
 				});
 			}
 
