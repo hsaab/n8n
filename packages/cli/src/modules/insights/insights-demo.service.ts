@@ -140,7 +140,9 @@ export class InsightsDemoService {
 		).map(({ workflowId }) => workflowId);
 
 		await this.deleteDemoWorkflows(legacyWorkflowIds);
-		await this.projectRepository.manager.delete(ProjectRelation, { projectId: In(legacyProjectIds) });
+		await this.projectRepository.manager.delete(ProjectRelation, {
+			projectId: In(legacyProjectIds),
+		});
 		await this.projectRepository.delete({ id: In(legacyProjectIds) });
 	}
 
@@ -284,7 +286,12 @@ export class InsightsDemoService {
 			events.push(
 				this.createInsight(metadata.metaId, 'success', successes, periodStart),
 				this.createInsight(metadata.metaId, 'failure', failures, periodStart),
-				this.createInsight(metadata.metaId, 'runtime_ms', total * definition.averageRuntimeMs, periodStart),
+				this.createInsight(
+					metadata.metaId,
+					'runtime_ms',
+					total * definition.averageRuntimeMs,
+					periodStart,
+				),
 				this.createInsight(
 					metadata.metaId,
 					'time_saved_min',
@@ -347,10 +354,13 @@ export class InsightsDemoService {
 
 	private getHighlights(rows: InsightsByWorkflow['data']): InsightsAnalystHighlight[] {
 		const byTimeSaved = [...rows].sort((a, b) => b.timeSaved - a.timeSaved);
+		const byTimeSavedPerRun = [...rows].sort(
+			(a, b) => this.getTimeSavedPerRun(a) - this.getTimeSavedPerRun(b),
+		);
 		const byFailures = [...rows].sort((a, b) => b.failed - a.failed);
 		return [
 			this.createHighlight('highest-impact', 'Highest automation impact', byTimeSaved[0]),
-			this.createHighlight('lowest-impact', 'Lowest time saved per run', byTimeSaved.at(-1)),
+			this.createHighlight('lowest-impact', 'Lowest time saved per run', byTimeSavedPerRun[0]),
 			this.createHighlight('needs-attention', 'Needs attention', byFailures[0]),
 		].filter((highlight): highlight is InsightsAnalystHighlight => highlight !== null);
 	}
@@ -361,7 +371,9 @@ export class InsightsDemoService {
 		row: InsightsByWorkflow['data'][number] | undefined,
 	): InsightsAnalystHighlight | null {
 		if (!row?.workflowId) return null;
-		const definition = INSIGHTS_ANALYST_DEMO_WORKFLOWS.find(({ id: workflowId }) => workflowId === row.workflowId);
+		const definition = INSIGHTS_ANALYST_DEMO_WORKFLOWS.find(
+			({ id: workflowId }) => workflowId === row.workflowId,
+		);
 		return {
 			id,
 			title,
@@ -369,14 +381,21 @@ export class InsightsDemoService {
 			workflowName: row.workflowName,
 			description: definition?.story ?? row.projectName,
 			trend: definition?.trend ?? 'neutral',
-			value: id === 'needs-attention' ? row.failed : row.timeSaved,
+			value:
+				id === 'needs-attention'
+					? row.failed
+					: id === 'lowest-impact'
+						? this.getTimeSavedPerRun(row)
+						: row.timeSaved,
 			unit: id === 'needs-attention' ? 'count' : 'minute',
 		};
 	}
 
-	private getLowImpactWorkflows(rows: InsightsByWorkflow['data']): InsightsAnalystLowImpactWorkflow[] {
+	private getLowImpactWorkflows(
+		rows: InsightsByWorkflow['data'],
+	): InsightsAnalystLowImpactWorkflow[] {
 		return [...rows]
-			.sort((a, b) => a.timeSaved - b.timeSaved)
+			.sort((a, b) => this.getTimeSavedPerRun(a) - this.getTimeSavedPerRun(b))
 			.slice(0, 3)
 			.flatMap((row) => {
 				if (!row.workflowId) return [];
@@ -391,5 +410,9 @@ export class InsightsDemoService {
 					},
 				];
 			});
+	}
+
+	private getTimeSavedPerRun(row: InsightsByWorkflow['data'][number]) {
+		return row.total > 0 ? row.timeSaved / row.total : 0;
 	}
 }
