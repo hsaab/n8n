@@ -1,0 +1,34 @@
+
+> @n8n/i18n@2.21.0 build /Users/hassansaab/Apps/Cursor/n8n/packages/frontend/@n8n/i18n
+> tsdown
+
+ℹ tsdown v0.16.5 powered by rolldown v1.0.0-beta.50
+ℹ Using tsdown config: /Users/hassansaab/Apps/Cursor/n8n/packages/frontend/@n8n/i18n/tsdown.config.ts
+ℹ entry: src/index.ts, src/types.ts, src/utils.ts
+ℹ tsconfig: tsconfig.json
+ℹ Build start
+ℹ Cleaning 20 files
+ℹ [CJS] dist/index.cjs       492.30 kB │ gzip: 109.85 kB
+ℹ [CJS] dist/utils.cjs         0.29 kB │ gzip:   0.16 kB
+ℹ [CJS] dist/types.cjs         0.00 kB │ gzip:   0.02 kB
+ℹ [CJS] dist/index.cjs.map   621.05 kB │ gzip: 123.63 kB
+ℹ [CJS] dist/utils2.cjs.map    3.42 kB │ gzip:   1.34 kB
+ℹ [CJS] dist/utils2.cjs        2.69 kB │ gzip:   1.02 kB
+ℹ [CJS] 6 files, total: 1119.76 kB
+ℹ [ESM] dist/index.mjs       491.90 kB │ gzip: 109.84 kB
+ℹ [ESM] dist/utils.mjs         0.22 kB │ gzip:   0.15 kB
+ℹ [ESM] dist/types.mjs         0.01 kB │ gzip:   0.03 kB
+ℹ [ESM] dist/index.mjs.map   620.96 kB │ gzip: 123.58 kB
+ℹ [ESM] dist/utils2.mjs.map    3.42 kB │ gzip:   1.34 kB
+ℹ [ESM] dist/utils2.mjs        2.27 kB │ gzip:   0.96 kB
+ℹ [ESM] dist/index.d.mts     327.96 kB │ gzip:  43.12 kB
+ℹ [ESM] dist/utils.d.mts       0.46 kB │ gzip:   0.25 kB
+ℹ [ESM] dist/types.d.mts       0.20 kB │ gzip:   0.14 kB
+ℹ [ESM] dist/types2.d.mts    312.27 kB │ gzip:  41.97 kB
+ℹ [ESM] 10 files, total: 1759.67 kB
+ℹ [CJS] dist/index.d.cts   327.96 kB │ gzip: 43.12 kB
+ℹ [CJS] dist/utils.d.cts     0.46 kB │ gzip:  0.25 kB
+ℹ [CJS] dist/types.d.cts     0.20 kB │ gzip:  0.14 kB
+ℹ [CJS] dist/types2.d.cts  312.27 kB │ gzip: 41.97 kB
+ℹ [CJS] 4 files, total: 640.89 kB
+✔ Build complete in 1527ms

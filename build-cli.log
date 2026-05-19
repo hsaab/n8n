@@ -1,0 +1,9 @@
+
+> n8n@2.21.0 build /Users/hassansaab/Apps/Cursor/n8n/packages/cli
+> tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json && pnpm run build:data
+
+
+> n8n@2.21.0 build:data /Users/hassansaab/Apps/Cursor/n8n/packages/cli
+> node scripts/build.mjs
+
+[bundle-agent-library] Wrote dist/agent-library-bundle.js — 219.0 KB (0.21 MB)

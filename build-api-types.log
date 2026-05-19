@@ -1,0 +1,4 @@
+
+> @n8n/api-types@1.21.0 build /Users/hassansaab/Apps/Cursor/n8n/packages/@n8n/api-types
+> tsc -p tsconfig.build.json
+
