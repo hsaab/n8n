@@ -182,11 +182,17 @@ export const insightsAnalystCitationSchema = z
 	.strict();
 export type InsightsAnalystCitation = z.infer<typeof insightsAnalystCitationSchema>;
 
+export const insightsAnalystChatModeSchema = z.enum(['llm', 'fallback']);
+export type InsightsAnalystChatMode = z.infer<typeof insightsAnalystChatModeSchema>;
+
 export const insightsAnalystChatResponseSchema = z
 	.object({
 		answer: z.string(),
 		citations: z.array(insightsAnalystCitationSchema),
 		followUpPrompts: z.array(z.string()),
+		// 'llm' when the response was produced by the Anthropic provider, 'fallback'
+		// when the deterministic templates served the answer (no API key configured).
+		mode: insightsAnalystChatModeSchema,
 	})
 	.strict();
 export type InsightsAnalystChatResponse = z.infer<typeof insightsAnalystChatResponseSchema>;

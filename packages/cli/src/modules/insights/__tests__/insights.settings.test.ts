@@ -1,15 +1,18 @@
 import type { LicenseState } from '@n8n/backend-common';
 import { mock } from 'jest-mock-extended';
 
+import type { InsightsConfig } from '../insights.config';
 import { InsightsSettings } from '../insights.settings';
 
 describe('InsightsSettings', () => {
 	let licenseMock: jest.Mocked<LicenseState>;
+	let insightsConfigMock: jest.Mocked<InsightsConfig>;
 	let insightsSettings: InsightsSettings;
 
 	beforeAll(() => {
 		licenseMock = mock<LicenseState>();
-		insightsSettings = new InsightsSettings(licenseMock);
+		insightsConfigMock = mock<InsightsConfig>();
+		insightsSettings = new InsightsSettings(licenseMock, insightsConfigMock);
 	});
 
 	test('returns correct summary and dashboard licenses', () => {

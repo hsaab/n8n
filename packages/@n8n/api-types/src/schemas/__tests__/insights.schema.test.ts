@@ -432,8 +432,31 @@ describe('insightsAnalystChat schemas', () => {
 				},
 			],
 			followUpPrompts: ['Which workflows need attention?'],
+			mode: 'llm',
 		});
 
 		expect(result.success).toBe(true);
+	});
+
+	it('validates fallback-mode analyst chat responses', () => {
+		const result = insightsAnalystChatResponseSchema.safeParse({
+			answer: 'Deterministic template answer.',
+			citations: [],
+			followUpPrompts: [],
+			mode: 'fallback',
+		});
+
+		expect(result.success).toBe(true);
+	});
+
+	it('rejects analyst chat responses with an unknown mode', () => {
+		const result = insightsAnalystChatResponseSchema.safeParse({
+			answer: 'something',
+			citations: [],
+			followUpPrompts: [],
+			mode: 'oracle',
+		});
+
+		expect(result.success).toBe(false);
 	});
 });

@@ -28,6 +28,7 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { InsightsByPeriod } from './database/entities/insights-by-period';
 import { InsightsMetadata } from './database/entities/insights-metadata';
 import { InsightsRaw } from './database/entities/insights-raw';
+import { InsightsAnalystChatService } from './insights-analyst-chat.service';
 import { InsightsConfig } from './insights.config';
 import { InsightsService } from './insights.service';
 
@@ -114,7 +115,8 @@ const demoWorkflows: DemoWorkflow[] = [
 		timeSavedPerExecution: 4,
 		trend: 'stable',
 		riskLevel: 'medium',
-		story: 'High execution volume, but low time saved per run makes it a weak automation ROI target.',
+		story:
+			'High execution volume, but low time saved per run makes it a weak automation ROI target.',
 		dailyMetrics: (dayIndex) => ({
 			success: dayIndex >= 23 ? 47 : 42,
 			failure: dayIndex >= 23 ? 5 : 4,
@@ -162,7 +164,8 @@ const demoWorkflows: DemoWorkflow[] = [
 		timeSavedPerExecution: 19,
 		trend: 'improving',
 		riskLevel: 'low',
-		story: 'Recovery workflow improved after retries were tuned, reducing failures while saving time.',
+		story:
+			'Recovery workflow improved after retries were tuned, reducing failures while saving time.',
 		dailyMetrics: (dayIndex) => ({
 			success: dayIndex >= 23 ? 21 : 15,
 			failure: dayIndex >= 23 ? 1 : 5,
@@ -228,6 +231,7 @@ export class InsightsDemoService {
 		private readonly dataSource: DataSource,
 		private readonly insightsConfig: InsightsConfig,
 		private readonly insightsService: InsightsService,
+		private readonly insightsAnalystChatService: InsightsAnalystChatService,
 	) {}
 
 	async bootstrap() {
@@ -278,6 +282,19 @@ export class InsightsDemoService {
 		...filter
 	}: InsightsDateFilter & { prompt: string }): Promise<InsightsAnalystChatResponse> {
 		const overview = await this.getOverview(filter);
+
+		// The chat service decides whether to call Anthropic or fall back to the
+		// deterministic templates. Either path returns the same shape with a
+		// `mode` flag the UI uses to render the "Powered by Claude" badge.
+		return await this.insightsAnalystChatService.answer(prompt, overview, () =>
+			this.deterministicAnswer(prompt, overview),
+		);
+	}
+
+	private deterministicAnswer(
+		prompt: string,
+		overview: InsightsAnalystOverview,
+	): InsightsAnalystChatResponse {
 		const normalizedPrompt = prompt.toLowerCase();
 
 		if (normalizedPrompt.includes('time') || normalizedPrompt.includes('saved')) {
@@ -383,7 +400,10 @@ export class InsightsDemoService {
 					projectName: project.name,
 				});
 
-				await manager.save(InsightsByPeriod, this.createInsightsRows(metadata.metaId, demoWorkflow));
+				await manager.save(
+					InsightsByPeriod,
+					this.createInsightsRows(metadata.metaId, demoWorkflow),
+				);
 				await manager.save(
 					ExecutionEntity,
 					this.createExecutionRows(workflow, demoWorkflow).map(({ execution }) => execution),
@@ -477,7 +497,10 @@ export class InsightsDemoService {
 		return executions;
 	}
 
-	private createExecutionData(demoWorkflow: DemoWorkflow, executionIndex: number): DemoExecutionData {
+	private createExecutionData(
+		demoWorkflow: DemoWorkflow,
+		executionIndex: number,
+	): DemoExecutionData {
 		const metrics = demoWorkflow.dailyMetrics(DEMO_DAYS - 1 - executionIndex);
 
 		return {
@@ -594,7 +617,9 @@ export class InsightsDemoService {
 		return byWorkflow.data
 			.filter((workflow) => workflow.workflowId !== null && workflow.projectId !== null)
 			.map((workflow) => {
-				const demoWorkflow = workflow.workflowId ? demoWorkflowById.get(workflow.workflowId) : undefined;
+				const demoWorkflow = workflow.workflowId
+					? demoWorkflowById.get(workflow.workflowId)
+					: undefined;
 
 				return {
 					workflowId: workflow.workflowId ?? '',
@@ -634,11 +659,13 @@ export class InsightsDemoService {
 
 	private buildHighlights(workflows: InsightsAnalystWorkflow[]): InsightsAnalystHighlight[] {
 		const topTimeSaver = [...workflows].sort((a, b) => b.timeSaved - a.timeSaved)[0];
-		const weakestTimeSaver = [...workflows].filter((workflow) => workflow.total > 0).sort((a, b) => {
-			const aPerExecution = a.timeSaved / a.total;
-			const bPerExecution = b.timeSaved / b.total;
-			return aPerExecution - bPerExecution;
-		})[0];
+		const weakestTimeSaver = [...workflows]
+			.filter((workflow) => workflow.total > 0)
+			.sort((a, b) => {
+				const aPerExecution = a.timeSaved / a.total;
+				const bPerExecution = b.timeSaved / b.total;
+				return aPerExecution - bPerExecution;
+			})[0];
 		const riskiestWorkflow = [...workflows].sort((a, b) => b.failureRate - a.failureRate)[0];
 
 		return [
@@ -687,16 +714,20 @@ export class InsightsDemoService {
 				this.workflowCitation(lowImpactWorkflow, 'Lowest impact per run'),
 			],
 			followUpPrompts: ['Which workflows need attention?', 'Summarize this for an ops review.'],
+			mode: 'fallback',
 		};
 	}
 
 	private answerFailureQuestion(overview: InsightsAnalystOverview): InsightsAnalystChatResponse {
-		const [riskiestWorkflow] = [...overview.workflows].sort((a, b) => b.failureRate - a.failureRate);
+		const [riskiestWorkflow] = [...overview.workflows].sort(
+			(a, b) => b.failureRate - a.failureRate,
+		);
 
 		return {
 			answer: `${riskiestWorkflow.workflowName} explains most of the reliability concern: it has a ${this.formatPercent(riskiestWorkflow.failureRate)} failure rate and is trending ${riskiestWorkflow.trend}. The seeded story points to a recent integration or payload change, so this is the workflow I would inspect before tuning lower-impact automations.`,
 			citations: [this.workflowCitation(riskiestWorkflow, 'Highest failure rate')],
 			followUpPrompts: ['Which workflows saved the most time?', 'What changed this week?'],
+			mode: 'fallback',
 		};
 	}
 
@@ -708,8 +739,11 @@ export class InsightsDemoService {
 
 		return {
 			answer: `I would prioritize ${riskyWorkflows.map(({ workflowName }) => workflowName).join(' and ')}. They combine elevated failure rates with degrading trends, which means they are more likely to affect customers than the healthy high-volume workflows. After that, review the low-impact workflows to decide whether they are worth maintaining.`,
-			citations: riskyWorkflows.map((workflow) => this.workflowCitation(workflow, 'Needs attention')),
+			citations: riskyWorkflows.map((workflow) =>
+				this.workflowCitation(workflow, 'Needs attention'),
+			),
 			followUpPrompts: ['Why did failures increase?', 'Which workflows saved the most time?'],
+			mode: 'fallback',
 		};
 	}
 
@@ -727,7 +761,11 @@ export class InsightsDemoService {
 				{ label: 'Time saved', value: this.formatMinutes(timeSaved) },
 				this.workflowCitation(topWorkflow, 'Top value driver'),
 			],
-			followUpPrompts: ['Which workflows need attention?', 'Which workflows saved us the most time?'],
+			followUpPrompts: [
+				'Which workflows need attention?',
+				'Which workflows saved us the most time?',
+			],
+			mode: 'fallback',
 		};
 	}
 

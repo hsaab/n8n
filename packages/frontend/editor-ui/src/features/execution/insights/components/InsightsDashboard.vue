@@ -277,7 +277,6 @@ onBeforeMount(async () => {
 						<span>{{ i18n.baseText('insights.chart.loading') }}</span>
 					</div>
 					<div :class="$style.insightsChartWrapper">
-						{{ granularity }}
 						<component
 							:is="chartComponents[props.insightType]"
 							:type="props.insightType"

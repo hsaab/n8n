@@ -172,6 +172,7 @@ export {
 	type InsightsAnalystChatRequest,
 	type InsightsAnalystCitation,
 	type InsightsAnalystChatResponse,
+	type InsightsAnalystChatMode,
 } from './schemas/insights.schema';
 
 export {

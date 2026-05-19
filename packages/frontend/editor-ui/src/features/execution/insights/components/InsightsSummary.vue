@@ -16,11 +16,31 @@ import { I18nT } from 'vue-i18n';
 import { useRoute } from 'vue-router';
 import { formatDateRange, getMatchingPreset, getTimeRangeLabels } from '../insights.utils';
 
-const props = defineProps<{
-	summary: InsightsSummaryDisplay;
-	startDate?: DateValue;
-	endDate?: DateValue;
-	loading?: boolean;
+type LinkVariant = 'route' | 'static';
+
+const props = withDefaults(
+	defineProps<{
+		summary: InsightsSummaryDisplay;
+		startDate?: DateValue;
+		endDate?: DateValue;
+		loading?: boolean;
+		/**
+		 * 'route' (default) renders each tab as a `RouterLink` to the main
+		 * Insights view. 'static' renders a button that emits `update:active`
+		 * so embedding pages (e.g. the analyst dashboard) can switch the
+		 * highlighted KPI without navigating away.
+		 */
+		linkVariant?: LinkVariant;
+		activeId?: keyof InsightsSummary;
+	}>(),
+	{
+		linkVariant: 'route',
+		activeId: undefined,
+	},
+);
+
+const emit = defineEmits<{
+	'update:active': [id: keyof InsightsSummary];
 }>();
 
 const i18n = useI18n();
@@ -82,6 +102,11 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 		referrer: route.name === VIEWS.INSIGHTS ? 'Dashboard' : 'Overview',
 	});
 };
+
+const handleStaticTabClick = (insightType: keyof InsightsSummary) => {
+	trackTabClick(insightType);
+	emit('update:active', insightType);
+};
 </script>
 
 <template>
@@ -110,7 +135,12 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 								</template>
 							</I18nT>
 						</template>
-						<RouterLink :to="to" :exact-active-class="$style.activeTab" @click="trackTabClick(id)">
+						<RouterLink
+							v-if="props.linkVariant === 'route'"
+							:to="to"
+							:exact-active-class="$style.activeTab"
+							@click="trackTabClick(id)"
+						>
 							<strong>
 								<N8nTooltip placement="bottom" :disabled="id !== 'timeSaved'">
 									<template #content>
@@ -162,6 +192,63 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 								</small>
 							</span>
 						</RouterLink>
+						<button
+							v-else
+							type="button"
+							:class="{ [$style.activeTab]: props.activeId === id }"
+							@click="handleStaticTabClick(id)"
+						>
+							<strong>
+								<N8nTooltip placement="bottom" :disabled="id !== 'timeSaved'">
+									<template #content>
+										{{ i18n.baseText('insights.banner.title.timeSaved.tooltip') }}
+									</template>
+									{{ summaryTitles[id] }}
+								</N8nTooltip>
+							</strong>
+							<small :class="$style.days">
+								{{ displayDateRangeLabel }}
+							</small>
+							<span v-if="value === 0 && id === 'timeSaved'" :class="$style.empty">
+								<em>--</em>
+								<small>
+									<N8nTooltip placement="bottom">
+										<template #content>
+											<I18nT keypath="insights.banner.timeSaved.tooltip" scope="global">
+												<template #link>{{
+													i18n.baseText('insights.banner.timeSaved.tooltip.link.text')
+												}}</template>
+											</I18nT>
+										</template>
+										<N8nIcon :class="$style.icon" icon="info" size="medium" />
+									</N8nTooltip>
+								</small>
+							</span>
+							<span v-else>
+								<em
+									>{{ smartDecimal(value).toLocaleString('en-US') }} <i>{{ unit }}</i></em
+								>
+								<small v-if="deviation !== null" :class="getImpactStyle(id, deviation)">
+									<N8nIcon
+										:class="[$style.icon, getImpactStyle(id, deviation)]"
+										:icon="
+											deviation === 0
+												? 'chevron-right'
+												: deviation > 0
+													? 'chevron-up'
+													: 'chevron-down'
+										"
+									/>
+									<N8nTooltip placement="bottom" :disabled="id !== 'failureRate'">
+										<template #content>
+											{{ i18n.baseText('insights.banner.failureRate.deviation.tooltip') }}
+										</template>
+										{{ smartDecimal(Math.abs(deviation)).toLocaleString('en-US')
+										}}{{ deviationUnit }}
+									</N8nTooltip>
+								</small>
+							</span>
+						</button>
 					</N8nTooltip>
 				</li>
 			</ul>
@@ -209,7 +296,8 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 			}
 		}
 
-		a {
+		a,
+		button {
 			display: grid;
 			align-items: center;
 			align-content: center;
@@ -218,6 +306,13 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 			padding: var(--spacing--3xs) var(--spacing--lg) 0;
 			background-color: var(--background--surface);
 			border-bottom: 3px solid transparent;
+			border-top: 0;
+			border-left: 0;
+			border-right: 0;
+			text-align: left;
+			color: inherit;
+			cursor: pointer;
+			font: inherit;
 
 			&:hover {
 				background-color: var(--background-hover);

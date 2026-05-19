@@ -19,6 +19,27 @@ export const transformInsightsTimeSaved = (minutes: number): number =>
 export const transformInsightsAverageRunTime = (ms: number): number => ms / 1000; // we want to show average run time in seconds
 export const transformInsightsFailureRate = (value: number): number => value * 100; // we want to show failure rate in percentage
 
+/**
+ * Localized "X minutes" / "X hours" label for a raw minute count.
+ * Always uses `interpolate` so the {count} placeholder is substituted
+ * (a top-level `{ count }` second arg silently breaks substitution in
+ * the n8n i18n wrapper).
+ */
+export const formatInsightsTimeSavedLabel = (minutes: number): string => {
+	const i18n = useI18n();
+	const transformed = transformInsightsTimeSaved(minutes);
+
+	if (Math.abs(minutes) < 60) {
+		return i18n.baseText('insights.analyst.minutes', {
+			interpolate: { count: transformed },
+		});
+	}
+
+	return i18n.baseText('insights.analyst.hours', {
+		interpolate: { count: transformed },
+	});
+};
+
 export const transformInsightsValues: Record<InsightsSummaryType, (value: number) => number> = {
 	total: (value: number) => value,
 	failed: (value: number) => value,

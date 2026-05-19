@@ -227,3 +227,45 @@ titles, test descriptions, and Linear URLs.
 - Always reference the Linear ticket in the PR description,
   use `https://linear.app/n8n/issue/[TICKET-ID]`
 - always link to the github issue if mentioned in the linear ticket.
+
+## Local Demo Verification
+
+When smoke-testing a UI change locally, use the **built** path on port 5678
+unless you are actively running the Vite dev server.
+
+| Command | Where to look | When to use |
+|---|---|---|
+| `pnpm start` | http://localhost:5678 | Default for verifying a feature end-to-end. Loads the **built** `editor-ui/dist`. |
+| `pnpm dev:fe` | http://localhost:8080 | Hot-reload UI work. Requires every workspace dep to have built first; otherwise Vite reports `Failed to resolve import` and serves nothing. |
+
+Cross-package rebuild order before `pnpm start` (run after touching api-types,
+cli, or editor-ui sources):
+
+```bash
+pnpm --filter @n8n/api-types build
+pnpm --filter n8n build
+pnpm --filter n8n-editor-ui build
+pnpm start
+```
+
+If the UI doesn't reflect a code change, run the `n8n-rebuild-doctor` skill or
+launch the `build-doctor` subagent.
+
+## LLM Features
+
+When integrating an LLM provider (Anthropic, OpenAI, etc.) into n8n product
+code, follow `n8n-llm-feature`. Required pieces:
+
+- Env config via `@Env(...)` on a `@Config` class — never read `process.env`
+  directly outside `@n8n/config` consumers.
+- Lazy-load the SDK at point of use to keep startup cheap and avoid pulling
+  it into processes that never enable the feature.
+- Deterministic fallback when the API key is empty or the call throws — the
+  customer-demo path must work without credentials.
+- Surface a `mode: 'llm' | 'fallback'` flag on the response so the UI can
+  render a "Powered by …" badge only in `'llm'` mode.
+
+Default models must be Sonnet-class. Opus defaults are caught by
+`bugbot/cost-controls.md` in PR review and must include an
+`// opus-approved: <link>` comment beside the model id with the approval
+thread.

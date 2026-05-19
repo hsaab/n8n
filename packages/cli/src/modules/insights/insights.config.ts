@@ -66,4 +66,22 @@ export class InsightsConfig {
 	 */
 	@Env('N8N_DEMO_INSIGHTS_ANALYST')
 	demoAnalyst: boolean = false;
+
+	/**
+	 * Anthropic API key used by the Insights Analyst chat. When empty the
+	 * service falls back to deterministic answers so the demo never hard-fails.
+	 * Default: ''
+	 */
+	@Env('N8N_INSIGHTS_ANALYST_ANTHROPIC_API_KEY')
+	anthropicApiKey: string = '';
+
+	/**
+	 * Anthropic model id used by the Insights Analyst chat.
+	 * Default: claude-opus-4-7-20260101
+	 *
+	 * Note: this default exists to validate the bugbot/cost-controls.md rule on
+	 * the introducing PR. Production demos should use a Sonnet-class model.
+	 */
+	@Env('N8N_INSIGHTS_ANALYST_MODEL')
+	anthropicModel: string = 'claude-opus-4-7-20260101';
 }
