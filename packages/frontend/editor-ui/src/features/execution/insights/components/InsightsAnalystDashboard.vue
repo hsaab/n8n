@@ -235,6 +235,8 @@ onMounted(async () => {
 </template>
 
 <style lang="scss" module>
+@use '@/app/css/variables' as vars;
+
 .view {
 	flex: 1;
 	overflow: auto;
@@ -242,22 +244,41 @@ onMounted(async () => {
 
 .container {
 	width: 100%;
-	max-width: var(--content-container--width);
+	max-width: calc(var(--content-container--width) + var(--spacing--5xl) + var(--spacing--5xl));
 	margin: 0 auto;
 	padding: var(--spacing--lg) var(--spacing--2xl);
+
+	@media (max-width: vars.$breakpoint-sm) {
+		padding: var(--spacing--md) var(--spacing--lg);
+	}
+
+	@media (max-width: vars.$breakpoint-xs) {
+		padding: var(--spacing--sm);
+	}
 }
 
 .title {
 	display: flex;
+	align-items: flex-start;
 	justify-content: space-between;
 	gap: var(--spacing--lg);
 	margin-bottom: var(--spacing--lg);
+
+	> div {
+		min-width: 0;
+	}
 
 	p {
 		margin: var(--spacing--2xs) 0 0;
 		color: var(--text-color--subtle);
 		font-size: var(--font-size--md);
 		line-height: var(--line-height--lg);
+	}
+
+	@media (max-width: vars.$breakpoint-xs) {
+		flex-direction: column;
+		align-items: flex-start;
+		gap: var(--spacing--sm);
 	}
 }
 
@@ -276,20 +297,36 @@ onMounted(async () => {
 
 .layout {
 	display: grid;
-	grid-template-columns: minmax(0, 1fr) minmax(0, 32%);
-	gap: var(--spacing--lg);
+	grid-template-columns:
+		minmax(0, 1fr)
+		minmax(
+			calc(var(--spacing--5xl) + var(--spacing--xl) + var(--spacing--xl)),
+			calc(var(--spacing--5xl) + var(--spacing--3xl) + var(--spacing--xl))
+		);
+	gap: var(--spacing--xl);
 	align-items: start;
+
+	// The analyst rail needs enough room to sit beside the dashboard without
+	// compressing cards or charts. Stack earlier than the regular Insights
+	// page so medium desktop and laptop widths stay clean.
+	@media (max-width: vars.$breakpoint-lg) {
+		grid-template-columns: minmax(0, 1fr);
+	}
 }
 
 .main {
 	display: grid;
 	gap: var(--spacing--lg);
+	min-width: 0;
 }
 
 .highlights,
 .lowImpactGrid {
 	display: grid;
-	grid-template-columns: repeat(3, minmax(0, 1fr));
+	grid-template-columns: repeat(
+		auto-fit,
+		minmax(min(100%, calc(var(--spacing--5xl) + var(--spacing--xl))), 1fr)
+	);
 	gap: var(--spacing--sm);
 }
 
@@ -364,10 +401,18 @@ onMounted(async () => {
 }
 
 .chartCard {
-	height: calc(
-		var(--spacing--5xl) + var(--spacing--5xl) + var(--spacing--5xl) + var(--spacing--xl)
+	height: clamp(
+		calc(var(--spacing--5xl) + var(--spacing--xl)),
+		45vh,
+		calc(var(--spacing--5xl) + var(--spacing--5xl))
 	);
+	min-width: 0;
+	overflow: hidden;
 	padding: var(--spacing--lg);
+
+	@media (max-width: vars.$breakpoint-xs) {
+		padding: var(--spacing--sm);
+	}
 }
 
 .rankings {
@@ -386,6 +431,19 @@ onMounted(async () => {
 	border-radius: var(--radius--lg);
 	color: var(--text-color);
 	text-decoration: none;
+	min-width: 0;
+
+	> span:nth-child(2) {
+		min-width: 0;
+		flex: 1 1 auto;
+
+		strong {
+			display: block;
+			overflow: hidden;
+			text-overflow: ellipsis;
+			white-space: nowrap;
+		}
+	}
 
 	&:hover .openInline,
 	&:focus-visible .openInline {
@@ -395,6 +453,19 @@ onMounted(async () => {
 	small {
 		display: block;
 		color: var(--text-color--subtle);
+	}
+
+	@media (max-width: vars.$breakpoint-xs) {
+		flex-wrap: wrap;
+		align-items: flex-start;
+
+		> span:nth-child(2) {
+			flex-basis: calc(100% - var(--spacing--xl) - var(--spacing--sm));
+		}
+
+		.trendChip {
+			display: none;
+		}
 	}
 }
 
@@ -419,6 +490,10 @@ onMounted(async () => {
 
 .openInline {
 	opacity: 0;
+
+	@media (max-width: vars.$breakpoint-sm) {
+		display: none;
+	}
 }
 
 .lowImpact {
@@ -434,5 +509,12 @@ onMounted(async () => {
 	position: sticky;
 	top: var(--spacing--lg);
 	align-self: start;
+	min-width: 0;
+
+	// Once the dashboard collapses to a single column, the chat sits
+	// below the main content and shouldn't try to stick to the viewport.
+	@media (max-width: vars.$breakpoint-lg) {
+		position: static;
+	}
 }
 </style>

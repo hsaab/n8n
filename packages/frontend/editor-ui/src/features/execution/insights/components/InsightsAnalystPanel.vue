@@ -27,6 +27,7 @@ const i18n = useI18n();
 const insightsStore = useInsightsStore();
 const input = ref('');
 const isWaiting = ref(false);
+const isStreaming = ref(false);
 const messages = ref<ChatMessage[]>([
 	{
 		id: 'welcome',
@@ -37,7 +38,9 @@ const messages = ref<ChatMessage[]>([
 ]);
 const scrollContainer = useTemplateRef<HTMLElement>('scrollContainer');
 
-const canSubmit = computed(() => input.value.trim().length > 0 && !isWaiting.value);
+const canSubmit = computed(
+	() => input.value.trim().length > 0 && !isWaiting.value && !isStreaming.value,
+);
 const showSuggestedPrompts = computed(
 	() => messages.value.length === 1 && props.suggestedPrompts.length > 0,
 );
@@ -63,7 +66,7 @@ const scrollToMessage = async (messageId: string) => {
 
 const submitPrompt = async (prompt = input.value) => {
 	const question = prompt.trim();
-	if (!question || isWaiting.value) return;
+	if (!question || isWaiting.value || isStreaming.value) return;
 
 	messages.value.push({
 		id: `user-${Date.now()}`,
@@ -76,25 +79,50 @@ const submitPrompt = async (prompt = input.value) => {
 
 	let responseMessageId = '';
 	try {
-		const response = await insightsStore.askAnalyst(question);
 		responseMessageId = `assistant-${Date.now()}`;
 		messages.value.push({
 			id: responseMessageId,
 			role: 'assistant',
-			content: response.answer,
-			mode: response.mode,
-			citations: response.citations,
-		});
-	} catch {
-		responseMessageId = `assistant-${Date.now()}`;
-		messages.value.push({
-			id: responseMessageId,
-			role: 'assistant',
-			content: i18n.baseText('insights.analyst.chat.error'),
+			content: '',
 			citations: [],
 		});
+		isWaiting.value = false;
+		isStreaming.value = true;
+		await scrollToMessage(responseMessageId);
+
+		await insightsStore.streamAnalyst(question, (chunk) => {
+			const message = messages.value.find(({ id }) => id === responseMessageId);
+			if (!message) return;
+
+			if (chunk.type === 'delta') {
+				message.content += chunk.text;
+				return;
+			}
+
+			message.content = chunk.response.answer;
+			message.mode = chunk.response.mode;
+			message.citations = chunk.response.citations;
+		});
+	} catch {
+		if (!responseMessageId) {
+			responseMessageId = `assistant-${Date.now()}`;
+		}
+
+		const message = messages.value.find(({ id }) => id === responseMessageId);
+		if (message) {
+			message.content = i18n.baseText('insights.analyst.chat.error');
+			message.citations = [];
+		} else {
+			messages.value.push({
+				id: responseMessageId,
+				role: 'assistant',
+				content: i18n.baseText('insights.analyst.chat.error'),
+				citations: [],
+			});
+		}
 	} finally {
 		isWaiting.value = false;
+		isStreaming.value = false;
 		await scrollToMessage(responseMessageId);
 	}
 };
@@ -171,9 +199,9 @@ const getCitationValue = (citation: InsightsAnalystCitation) => {
 			<ChatInputBase
 				v-model="input"
 				:placeholder="i18n.baseText('insights.analyst.chat.placeholder')"
-				:is-streaming="false"
+				:is-streaming="isStreaming"
 				:can-submit="canSubmit"
-				:disabled="isWaiting"
+				:disabled="isWaiting || isStreaming"
 				:show-voice="false"
 				:show-attach="false"
 				@submit="submitPrompt()"
@@ -183,17 +211,33 @@ const getCitationValue = (citation: InsightsAnalystCitation) => {
 </template>
 
 <style lang="scss" module>
+@use '@/app/css/variables' as vars;
 @use '@/features/ai/shared/styles/prompt-suggestion-buttons';
 
 .panel {
 	display: grid;
 	grid-template-rows: auto 1fr auto;
 	min-height: 0;
-	height: calc(100vh - var(--spacing--5xl) - var(--spacing--5xl));
+	height: min(
+		calc(100vh - var(--spacing--5xl) - var(--spacing--xl)),
+		calc(var(--spacing--5xl) + var(--spacing--5xl) + var(--spacing--3xl))
+	);
 	border: var(--border);
 	border-radius: var(--radius--xl);
 	background: var(--background--surface);
 	overflow: hidden;
+
+	// Keep this in sync with the dashboard breakpoint where the chat rail
+	// stacks below the main content. A viewport-tall panel in that layout
+	// reads like it is covering the dashboard instead of following it.
+	@media (max-width: vars.$breakpoint-lg) {
+		height: auto;
+		min-height: calc(var(--spacing--5xl) + var(--spacing--3xl));
+	}
+
+	@media (max-width: vars.$breakpoint-xs) {
+		min-height: 0;
+	}
 }
 
 .header {
@@ -207,6 +251,10 @@ const getCitationValue = (citation: InsightsAnalystCitation) => {
 		margin: var(--spacing--3xs) 0 0;
 		color: var(--text-color--subtle);
 	}
+
+	@media (max-width: vars.$breakpoint-xs) {
+		padding: var(--spacing--md);
+	}
 }
 
 .messages {
@@ -217,6 +265,10 @@ const getCitationValue = (citation: InsightsAnalystCitation) => {
 	padding: var(--spacing--lg);
 	overflow: auto;
 	min-height: 0;
+
+	@media (max-width: vars.$breakpoint-xs) {
+		padding: var(--spacing--md);
+	}
 }
 
 .message {
@@ -304,6 +356,14 @@ const getCitationValue = (citation: InsightsAnalystCitation) => {
 	padding: var(--spacing--lg);
 	border-top: var(--border);
 	background: var(--background--surface);
+
+	@media (max-width: vars.$breakpoint-lg) {
+		position: static;
+	}
+
+	@media (max-width: vars.$breakpoint-xs) {
+		padding: var(--spacing--md);
+	}
 }
 
 .suggestions {
