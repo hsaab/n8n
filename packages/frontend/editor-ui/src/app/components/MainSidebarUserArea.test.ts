@@ -41,6 +41,7 @@ describe('MainSidebarUserArea', () => {
 	it('should apply dark theme immediately from the user menu', async () => {
 		const { getByTestId } = renderComponent();
 
+		await getByTestId('main-sidebar-user-menu').click();
 		await getByTestId('user-menu-item-theme-dark').click();
 
 		expect(uiStore.setTheme).toHaveBeenCalledWith('dark');
@@ -49,6 +50,7 @@ describe('MainSidebarUserArea', () => {
 	it('should apply light theme immediately from the user menu', async () => {
 		const { getByTestId } = renderComponent();
 
+		await getByTestId('main-sidebar-user-menu').click();
 		await getByTestId('user-menu-item-theme-light').click();
 
 		expect(uiStore.setTheme).toHaveBeenCalledWith('light');
@@ -57,6 +59,7 @@ describe('MainSidebarUserArea', () => {
 	it('should apply system theme immediately from the user menu', async () => {
 		const { getByTestId } = renderComponent();
 
+		await getByTestId('main-sidebar-user-menu').click();
 		await getByTestId('user-menu-item-theme-system').click();
 
 		expect(uiStore.setTheme).toHaveBeenCalledWith('system');
