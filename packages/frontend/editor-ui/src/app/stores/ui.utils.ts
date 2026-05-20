@@ -13,6 +13,10 @@ export function isValidTheme(theme: string | null): theme is AppliedThemeOption 
 	return !!theme && ['light', 'dark'].includes(theme);
 }
 
+export function isValidThemeOption(theme: string | null): theme is ThemeOption {
+	return !!theme && ['light', 'dark', 'system'].includes(theme);
+}
+
 // query param allows overriding theme for demo view in preview iframe without flickering
 export function getThemeOverride(): AppliedThemeOption | null {
 	const override = getQueryParam('theme') ?? localStorage.getItem(LOCAL_STORAGE_THEME);

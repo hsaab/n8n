@@ -97,7 +97,7 @@ import {
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
-import { applyThemeToBody, getThemeOverride, isValidTheme } from './ui.utils';
+import { applyThemeToBody, getThemeOverride, isValidTheme, isValidThemeOption } from './ui.utils';
 import { computed, ref } from 'vue';
 import type { IMenuItem } from '@n8n/design-system';
 import type { Connection } from '@vue-flow/core';
@@ -127,7 +127,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	const theme = useLocalStorage<ThemeOption>(LOCAL_STORAGE_THEME, savedTheme, {
 		writeDefaults: false,
 		serializer: {
-			read: (value) => (isValidTheme(value) ? value : savedTheme),
+			read: (value) => (isValidThemeOption(value) ? value : savedTheme),
 			write: identity,
 		},
 	});

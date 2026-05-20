@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { VIEWS } from '@/app/constants';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
+import type { ThemeOption } from '@/Interface';
 import {
 	type IMenuItem,
 	N8nAvatar,
@@ -10,7 +12,7 @@ import {
 	N8nText,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { ref } from 'vue';
+import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 
 defineProps<{ fullyExpanded: boolean; isCollapsed: boolean }>();
@@ -18,8 +20,27 @@ defineProps<{ fullyExpanded: boolean; isCollapsed: boolean }>();
 const i18n = useI18n();
 const router = useRouter();
 const usersStore = useUsersStore();
+const uiStore = useUIStore();
 
-const userMenuItems = ref<IMenuItem[]>([
+const themeMenuItems = computed<IMenuItem[]>(() => [
+	{
+		id: 'theme-system',
+		icon: 'contrast',
+		label: i18n.baseText('settings.personal.theme.systemDefault'),
+	},
+	{
+		id: 'theme-light',
+		icon: 'sun',
+		label: i18n.baseText('settings.personal.theme.light'),
+	},
+	{
+		id: 'theme-dark',
+		icon: 'palette',
+		label: i18n.baseText('settings.personal.theme.dark'),
+	},
+]);
+
+const accountMenuItems = computed<IMenuItem[]>(() => [
 	{
 		id: 'settings',
 		icon: 'settings',
@@ -32,11 +53,30 @@ const userMenuItems = ref<IMenuItem[]>([
 	},
 ]);
 
+const menuItems = computed<IMenuItem[]>(() => [...themeMenuItems.value, ...accountMenuItems.value]);
+
+const themeMenuItemIds: Record<string, ThemeOption> = {
+	'theme-system': 'system',
+	'theme-light': 'light',
+	'theme-dark': 'dark',
+};
+
+const isThemeMenuItemActive = (itemId: string): boolean => {
+	const themeOption = themeMenuItemIds[itemId];
+	return themeOption !== undefined && uiStore.theme === themeOption;
+};
+
 const onLogout = () => {
 	void router.push({ name: VIEWS.SIGNOUT });
 };
 
 const onUserActionToggle = (action: string) => {
+	const themeOption = themeMenuItemIds[action];
+	if (themeOption !== undefined) {
+		uiStore.setTheme(themeOption);
+		return;
+	}
+
 	switch (action) {
 		case 'logout':
 			onLogout();
@@ -56,9 +96,10 @@ const onUserActionToggle = (action: string) => {
 			<template #content>
 				<div :class="$style.popover">
 					<N8nMenuItem
-						v-for="action in userMenuItems"
+						v-for="action in menuItems"
 						:key="action.id"
 						:item="action"
+						:active="isThemeMenuItemActive(action.id)"
 						:data-test-id="`user-menu-item-${action.id}`"
 						@click="() => onUserActionToggle(action.id)"
 					/>
