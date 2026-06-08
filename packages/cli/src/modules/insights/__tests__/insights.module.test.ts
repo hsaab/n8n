@@ -12,6 +12,7 @@ import { InsightsService } from '../insights.service';
 describe('InsightsModule', () => {
 	let insightsModule: InsightsModule;
 	let mockInstanceSettings: MockProxy<InstanceSettings>;
+	let logger: Logger;
 
 	beforeAll(async () => {
 		await testDb.init();
@@ -27,7 +28,8 @@ describe('InsightsModule', () => {
 
 		mockInstanceSettings = mock<InstanceSettings>();
 		Container.set(InstanceSettings, mockInstanceSettings);
-		Container.set(Logger, mockLogger());
+		logger = mockLogger();
+		Container.set(Logger, logger);
 		Container.set(LicenseState, mock<LicenseState>());
 		Container.set(
 			InsightsService,
@@ -42,6 +44,21 @@ describe('InsightsModule', () => {
 		);
 		insightsModule = Container.get(InsightsModule);
 		await createTeamProject();
+	});
+
+	describe('init', () => {
+		it('continues module initialization when insights service startup fails', async () => {
+			const startupError = new Error('Failed to start insights service');
+			const insightsService = mock<InsightsService>();
+			insightsService.init.mockRejectedValue(startupError);
+			Container.set(InsightsService, insightsService);
+
+			await expect(insightsModule.init()).resolves.toBeUndefined();
+
+			expect(logger.warn).toHaveBeenCalledWith('Failed to initialize insights service', {
+				error: startupError,
+			});
+		});
 	});
 
 	describe('Dynamic conditional import of InsightsCollectionService', () => {
