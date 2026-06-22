@@ -231,3 +231,40 @@ titles, test descriptions, and Linear URLs.
 - Always reference the Linear ticket in the PR description,
   use `https://linear.app/n8n/issue/[TICKET-ID]`
 - always link to the github issue if mentioned in the linear ticket.
+
+## Cursor Cloud specific instructions
+
+These notes capture non-obvious setup/run caveats for Cursor Cloud agents. The
+update script (run automatically on VM startup) already handles dependency
+refresh, so you should not need to re-run it manually.
+
+### Toolchain / Node version gotcha
+- This repo requires **Node `>=22.16`** and **pnpm `10.32.1`** (see `engines`
+  and `packageManager` in the root `package.json`).
+- The sandbox ships a default `node` at `/exec-daemon/node` (v22.14.0) that is
+  **first on `PATH` and does NOT satisfy `engines`**. The required Node
+  (v22.22.2) is installed via `nvm` at
+  `$HOME/.nvm/versions/node/v22.22.2/bin`.
+- `~/.bashrc` is configured to prepend the nvm Node bin so **login/interactive
+  shells already use Node v22.22.2** and corepack-managed pnpm. If you ever land
+  in a shell still showing v22.14.0 (e.g. a bare non-login `bash -c`), run
+  `export PATH="$HOME/.nvm/versions/node/v22.22.2/bin:$PATH"` first.
+- pnpm is provided through **corepack** (pinned by `package.json`
+  `packageManager`). Do not `npm install` — a `preinstall` guard
+  (`scripts/block-npm-install.js`) blocks it.
+
+### Update script (startup)
+The startup update script is intentionally minimal and idempotent:
+```
+export PATH="$HOME/.nvm/versions/node/v22.22.2/bin:$PATH"
+corepack enable
+pnpm install --frozen-lockfile
+```
+
+### Running the app (dev)
+- Standard commands live in the root `package.json` and the "Essential
+  Commands" section above (`pnpm build`, `pnpm dev`, `pnpm lint`, `pnpm test`).
+- A first `pnpm build` is required before the CLI can `pnpm start`; `pnpm dev`
+  runs watchers across packages. The editor UI is served by Vite on
+  `http://localhost:5173` during `pnpm dev`; the backend/REST API listens on
+  `http://localhost:5678`.
