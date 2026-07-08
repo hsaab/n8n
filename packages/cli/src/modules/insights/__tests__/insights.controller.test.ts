@@ -10,6 +10,7 @@ import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
 import { TypeToNumber } from '../database/entities/insights-shared';
 import { InsightsByPeriodRepository } from '../database/repositories/insights-by-period.repository';
+import { InsightsAnalystChatService } from '../insights-analyst-chat.service';
 import { InsightsController } from '../insights.controller';
 
 function expectDatesClose(actual: Date, expected: Date, maxDriftMs?: number) {
@@ -27,6 +28,7 @@ afterAll(async () => {
 
 describe('InsightsController', () => {
 	const insightsByPeriodRepository = mockInstance(InsightsByPeriodRepository);
+	const insightsAnalystChatService = mockInstance(InsightsAnalystChatService);
 	let controller: InsightsController;
 	const sevenDaysAgo = DateTime.now().minus({ days: 7 }).toJSDate();
 	const today = DateTime.now().toJSDate();
@@ -914,6 +916,36 @@ describe('InsightsController', () => {
 					),
 				);
 			});
+		});
+	});
+
+	describe('askInsightsAnalyst', () => {
+		it('should honor endDate-only chat filters with a 30-day window ending on endDate', async () => {
+			const endDate = DateTime.now().minus({ days: 10 }).startOf('day').toJSDate();
+			const expectedStart = DateTime.fromJSDate(endDate)
+				.minus({ days: 30 })
+				.startOf('day')
+				.toJSDate();
+
+			insightsAnalystChatService.ask.mockResolvedValue({
+				answer: 'ok',
+				mode: 'fallback',
+				citations: [],
+			});
+
+			await controller.askInsightsAnalyst(
+				mock<AuthenticatedRequest>({ body: { question: 'Summarize this', endDate } }),
+				mock<Response>(),
+			);
+
+			expect(insightsAnalystChatService.ask).toHaveBeenCalledWith('Summarize this', {
+				startDate: expect.any(Date),
+				endDate,
+			});
+
+			const dateFilter = insightsAnalystChatService.ask.mock.calls[0][1];
+			expectDatesClose(dateFilter?.startDate ?? new Date(), expectedStart);
+			expect(dateFilter?.endDate).toEqual(endDate);
 		});
 	});
 });

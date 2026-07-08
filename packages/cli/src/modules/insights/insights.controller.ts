@@ -223,6 +223,19 @@ export class InsightsController {
 	): { startDate: Date; endDate: Date } | undefined {
 		if (!request.startDate && !request.endDate) return undefined;
 
+		if (request.endDate && !request.startDate) {
+			const dateFilter = {
+				startDate: DateTime.fromJSDate(request.endDate)
+					.minus({ days: 30 })
+					.startOf('day')
+					.toJSDate(),
+				endDate: request.endDate,
+			};
+			this.validateQueryDates(dateFilter);
+			this.checkDatesFiltersAgainstLicense(dateFilter);
+			return dateFilter;
+		}
+
 		return this.prepareDateFilters(request);
 	}
 
