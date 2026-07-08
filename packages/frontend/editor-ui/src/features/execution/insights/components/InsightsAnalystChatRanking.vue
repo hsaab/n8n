@@ -118,13 +118,13 @@ const getShareWidth = (minutes: number) => {
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
-		font-size: var(--font-size--md);
+		font-size: var(--font-size--lg);
 	}
 }
 
 .metric {
 	font-weight: var(--font-weight--bold);
-	font-size: var(--font-size--sm);
+	font-size: var(--font-size--md);
 }
 
 .shareTrack {

@@ -296,6 +296,8 @@ const submitPrompt = async (prompt = input.value) => {
 
 .assistant .bubble {
 	width: 100%;
+	font-size: var(--font-size--lg);
+	line-height: var(--line-height--xl);
 }
 
 .waitingBubble {

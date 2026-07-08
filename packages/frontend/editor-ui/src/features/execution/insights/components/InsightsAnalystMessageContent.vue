@@ -86,7 +86,7 @@ const getCitationValue = (citation: InsightsAnalystCitation) => {
 		/>
 
 		<section v-if="parsedContent.takeaways" :class="$style.takeaways">
-			<N8nHeading tag="h4" size="small" bold>
+			<N8nHeading tag="h4" size="medium" bold>
 				{{ i18n.baseText('insights.analyst.chat.takeaways') }}
 			</N8nHeading>
 			<div :class="$style.prose">
@@ -112,19 +112,43 @@ const getCitationValue = (citation: InsightsAnalystCitation) => {
 .content {
 	display: grid;
 	gap: var(--spacing--md);
-	font-size: var(--font-size--md);
-	line-height: var(--line-height--lg);
+	font-size: var(--font-size--lg);
+	line-height: var(--line-height--xl);
 }
 
 .prose {
-	:deep(*) {
-		font-size: inherit;
-		line-height: inherit;
+	:deep(h2) {
+		margin: var(--spacing--sm) 0 var(--spacing--xs);
+		font-size: var(--font-size--xl);
+		font-weight: var(--font-weight--bold);
+		line-height: var(--line-height--md);
+		color: var(--color--text--shade-1);
+
+		&:first-child {
+			margin-top: 0;
+		}
+	}
+
+	:deep(h3) {
+		margin: var(--spacing--md) 0 var(--spacing--xs);
+		font-size: var(--font-size--lg);
+		font-weight: var(--font-weight--bold);
+		line-height: var(--line-height--lg);
+		color: var(--color--text--shade-1);
+	}
+
+	:deep(h4) {
+		margin: var(--spacing--sm) 0 var(--spacing--2xs);
+		font-size: var(--font-size--md);
+		font-weight: var(--font-weight--bold);
+		line-height: var(--line-height--lg);
 	}
 
 	:deep(p),
 	:deep(li) {
-		margin: var(--spacing--xs) 0;
+		margin: var(--spacing--sm) 0;
+		font-size: var(--font-size--lg);
+		line-height: var(--line-height--xl);
 
 		&:first-child {
 			margin-top: 0;
@@ -171,28 +195,34 @@ const getCitationValue = (citation: InsightsAnalystCitation) => {
 			b {
 				display: inline-block;
 				margin-bottom: var(--spacing--5xs);
-				font-size: var(--font-size--md);
+				font-size: var(--font-size--lg);
 			}
 		}
 	}
 
 	:deep(ul) {
 		margin: var(--spacing--sm) 0 0;
-		padding-left: var(--spacing--lg);
+		padding-left: var(--spacing--xl);
+
+		li {
+			font-size: var(--font-size--lg);
+			line-height: var(--line-height--xl);
+		}
 
 		li + li {
-			margin-top: var(--spacing--2xs);
+			margin-top: var(--spacing--sm);
 		}
 	}
 }
 
 .takeaways {
 	display: grid;
-	gap: var(--spacing--xs);
+	gap: var(--spacing--sm);
 	padding: var(--spacing--md);
 	border: var(--border);
 	border-radius: var(--radius--lg);
 	background: var(--background--surface);
+	font-size: var(--font-size--lg);
 }
 
 .citations {
@@ -209,10 +239,10 @@ const getCitationValue = (citation: InsightsAnalystCitation) => {
 	color: var(--text-color);
 	text-decoration: none;
 	background: var(--background--surface);
-	font-size: var(--font-size--sm);
+	font-size: var(--font-size--md);
 
 	strong {
-		font-size: var(--font-size--md);
+		font-size: var(--font-size--lg);
 	}
 
 	span {
