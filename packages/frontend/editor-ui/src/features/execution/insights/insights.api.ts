@@ -70,8 +70,14 @@ export const fetchInsightsByWorkflow = async (
 
 export const fetchInsightsAnalystOverview = async (
 	context: IRestApiContext,
+	filter?: InsightsDateFilterDto,
 ): Promise<InsightsAnalystOverview> =>
-	await makeRestApiRequest(context, 'GET', '/insights/analyst/overview');
+	await makeRestApiRequest(
+		context,
+		'GET',
+		'/insights/analyst/overview',
+		serializeInsightsFilter(filter),
+	);
 
 export const askInsightsAnalyst = async (
 	context: IRestApiContext,

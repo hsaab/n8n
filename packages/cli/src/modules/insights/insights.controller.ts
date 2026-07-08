@@ -113,8 +113,13 @@ export class InsightsController {
 
 	@Get('/analyst/overview')
 	@GlobalScope('insights:list')
-	async getInsightsAnalystOverview(): Promise<InsightsAnalystOverview> {
-		return await this.insightsDemoService.getOverview();
+	async getInsightsAnalystOverview(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Query query: InsightsDateFilterDto = {},
+	): Promise<InsightsAnalystOverview> {
+		const { startDate, endDate } = this.prepareDateFilters(query);
+		return await this.insightsDemoService.getOverview({ startDate, endDate });
 	}
 
 	@Post('/analyst/chat')

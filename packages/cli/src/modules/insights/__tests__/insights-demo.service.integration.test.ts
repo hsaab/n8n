@@ -60,4 +60,26 @@ describe('InsightsDemoService (Integration)', () => {
 		});
 		expect(project.name).toBe(INSIGHTS_ANALYST_DEMO_PROJECT_NAME);
 	});
+
+	test('seed does not delete unrelated projects that share the demo name', async () => {
+		const projectRepository = Container.get(ProjectRepository);
+		const workflowRepository = Container.get(WorkflowRepository);
+		const service = Container.get(InsightsDemoService);
+
+		const customerProject = projectRepository.create({
+			id: 'customer-demo-ops',
+			name: INSIGHTS_ANALYST_DEMO_PROJECT_NAME,
+			type: 'team',
+		});
+		await projectRepository.save(customerProject);
+
+		await service.seed();
+
+		const customerProjectAfterSeed = await projectRepository.findOneBy({
+			id: customerProject.id,
+		});
+		expect(customerProjectAfterSeed).not.toBeNull();
+		expect(await projectRepository.count({ where: { id: customerProject.id } })).toBe(1);
+		expect(await workflowRepository.count()).toBe(INSIGHTS_ANALYST_DEMO_WORKFLOWS.length);
+	});
 });

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent, onMounted, ref, shallowRef } from 'vue';
+import { computed, defineAsyncComponent, onMounted, ref, shallowRef, watch } from 'vue';
 import { RouterLink } from 'vue-router';
 import { getLocalTimeZone, today } from '@internationalized/date';
 import type {
@@ -19,6 +19,7 @@ import { useInsightsStore } from '@/features/execution/insights/insights.store';
 import { INSIGHT_TYPES } from '@/features/execution/insights/insights.constants';
 import {
 	formatInsightsTimeSavedLabel,
+	getAdjustedDateRange,
 	getTimeRangeLabels,
 	timeRangeMappings,
 	transformInsightsSummary,
@@ -104,9 +105,15 @@ const formatTimeSavedPerRunLabel = (minutes: number) => {
 	});
 };
 
-onMounted(async () => {
+const fetchOverview = () => {
+	const { startDate, endDate } = getAdjustedDateRange(range.value);
+	void insightsStore.analystOverview.execute(0, { startDate, endDate });
+};
+
+watch(range, fetchOverview, { immediate: true });
+
+onMounted(() => {
 	useDocumentTitle().set(i18n.baseText('insights.analyst.title'));
-	await insightsStore.analystOverview.execute();
 });
 </script>
 

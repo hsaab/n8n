@@ -73,8 +73,8 @@ export const useInsightsStore = defineStore('insights', () => {
 	const dateRanges = computed(() => settingsStore.moduleSettings.insights?.dateRanges ?? []);
 
 	const analystOverview = useAsyncState(
-		async () => {
-			return await insightsApi.fetchInsightsAnalystOverview(rootStore.restApiContext);
+		async (filter?: InsightsDateFilterDto) => {
+			return await insightsApi.fetchInsightsAnalystOverview(rootStore.restApiContext, filter);
 		},
 		null,
 		{ immediate: false, resetOnExecute: false },

@@ -63,9 +63,13 @@ export class InsightsDemoService {
 		this.logger.debug('Insights Analyst demo data seeded');
 	}
 
-	async getOverview(): Promise<InsightsAnalystOverview> {
-		const endDate = DateTime.utc().toJSDate();
-		const startDate = DateTime.utc().minus({ days: 30 }).startOf('day').toJSDate();
+	async getOverview(dateFilter?: {
+		startDate: Date;
+		endDate: Date;
+	}): Promise<InsightsAnalystOverview> {
+		const endDate = dateFilter?.endDate ?? DateTime.utc().toJSDate();
+		const startDate =
+			dateFilter?.startDate ?? DateTime.utc().minus({ days: 30 }).startOf('day').toJSDate();
 		const projectId = INSIGHTS_ANALYST_DEMO_PROJECT_ID;
 		const [summary, byTime, byWorkflow] = await Promise.all([
 			this.insightsService.getInsightsSummary({ startDate, endDate, projectId }),
@@ -122,13 +126,19 @@ export class InsightsDemoService {
 	}
 
 	private async deleteLegacyDemoProjects(): Promise<void> {
-		const legacyProjects = await this.projectRepository.find({
-			where: { name: INSIGHTS_ANALYST_DEMO_PROJECT_NAME },
-			select: { id: true },
-		});
-		const legacyProjectIds = legacyProjects
-			.map(({ id }) => id)
-			.filter((id) => id !== INSIGHTS_ANALYST_DEMO_PROJECT_ID);
+		const demoWorkflowIds = INSIGHTS_ANALYST_DEMO_WORKFLOWS.map(({ id }) => id);
+		const legacyProjectIds = [
+			...new Set(
+				(
+					await this.sharedWorkflowRepository.find({
+						where: { workflowId: In(demoWorkflowIds) },
+						select: { projectId: true },
+					})
+				)
+					.map(({ projectId }) => projectId)
+					.filter((id) => id !== INSIGHTS_ANALYST_DEMO_PROJECT_ID),
+			),
+		];
 
 		if (legacyProjectIds.length === 0) return;
 

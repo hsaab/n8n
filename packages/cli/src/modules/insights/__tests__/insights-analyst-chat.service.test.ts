@@ -104,6 +104,30 @@ describe('InsightsAnalystChatService', () => {
 		expect(response.mode).toBe('fallback');
 	});
 
+	test('returns empty-data fallback without throwing when workflow rows are missing', async () => {
+		const config = mock<InsightsConfig>({
+			analystAnthropicApiKey: '',
+			analystModel: 'claude-sonnet-4-5-20250929',
+		});
+		const emptyOverview: InsightsAnalystOverview = {
+			...overview,
+			byWorkflow: { count: 0, data: [] },
+		};
+		const demoService = mock<InsightsDemoService>({
+			getOverview: jest.fn().mockResolvedValue(emptyOverview),
+		});
+		const logger = mock<Logger>({
+			scoped: jest.fn().mockReturnThis(),
+		});
+		const service = new InsightsAnalystChatService(config, demoService, logger);
+
+		const response = await service.ask('Which workflows saved us the most time?');
+
+		expect(response.mode).toBe('fallback');
+		expect(response.answer).toContain('not available yet');
+		expect(response.citations).toEqual([]);
+	});
+
 	test('streams deterministic fallback when Anthropic key is empty', async () => {
 		const config = mock<InsightsConfig>({
 			analystAnthropicApiKey: '',

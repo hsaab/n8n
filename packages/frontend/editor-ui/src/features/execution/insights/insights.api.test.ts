@@ -412,7 +412,7 @@ describe('insights.api', () => {
 	});
 
 	describe('fetchInsightsAnalystOverview', () => {
-		it('should make GET request to /insights/analyst/overview', async () => {
+		it('should make GET request to /insights/analyst/overview without filter', async () => {
 			const overview = {
 				project: { id: 'project-1', name: 'Demo Operations' },
 			};
@@ -424,6 +424,29 @@ describe('insights.api', () => {
 				mockContext,
 				'GET',
 				'/insights/analyst/overview',
+				undefined,
+			);
+			expect(result).toEqual(overview);
+		});
+
+		it('should make GET request to /insights/analyst/overview with serialized filter', async () => {
+			const startDate = new Date('2025-01-01T00:00:00.000Z');
+			const endDate = new Date('2025-01-31T23:59:59.999Z');
+			const overview = {
+				project: { id: 'project-1', name: 'Demo Operations' },
+			};
+			vi.mocked(makeRestApiRequest).mockResolvedValue(overview);
+
+			const result = await fetchInsightsAnalystOverview(mockContext, { startDate, endDate });
+
+			expect(makeRestApiRequest).toHaveBeenCalledWith(
+				mockContext,
+				'GET',
+				'/insights/analyst/overview',
+				{
+					startDate: '2025-01-01T00:00:00.000Z',
+					endDate: '2025-01-31T23:59:59.999Z',
+				},
 			);
 			expect(result).toEqual(overview);
 		});

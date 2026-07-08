@@ -184,8 +184,17 @@ export class InsightsAnalystChatService {
 		question: string,
 		overview: InsightsAnalystOverview,
 	): InsightsAnalystChatResponse {
-		const normalized = question.toLowerCase();
 		const rows = overview.byWorkflow.data;
+		if (rows.length === 0) {
+			return {
+				mode: 'fallback',
+				answer:
+					'Workflow insights are not available yet. Try again after the demo workspace finishes seeding.',
+				citations: [],
+			};
+		}
+
+		const normalized = question.toLowerCase();
 		const topTimeSaved = this.getTopBy(rows, 'timeSaved');
 		const lowestTimeSaved = this.getLowestBy(rows, 'timeSaved');
 		const mostFailures = this.getTopBy(rows, 'failed');
