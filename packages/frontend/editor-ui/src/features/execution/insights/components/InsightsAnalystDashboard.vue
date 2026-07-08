@@ -64,6 +64,7 @@ const presets = computed(() =>
 );
 
 const overview = computed(() => insightsStore.analystOverview.state);
+const analystDateFilter = computed(() => getAdjustedDateRange(range.value));
 const summary = computed(() => transformInsightsSummary(overview.value?.summary ?? null));
 const workflowRows = computed(() => overview.value?.byWorkflow.data ?? []);
 const chartComponents = computed(() => ({
@@ -234,6 +235,8 @@ onMounted(() => {
 					<InsightsAnalystPanel
 						:suggested-prompts="overview.suggestedPrompts"
 						:workflow-rows="workflowRows"
+						:start-date="analystDateFilter.startDate"
+						:end-date="analystDateFilter.endDate"
 						:class="$style.chat"
 					/>
 				</section>

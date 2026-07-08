@@ -133,7 +133,9 @@ export class InsightsController {
 			throw new BadRequestError(parsed.error.errors.map(({ message }) => message).join(' '));
 		}
 
-		return await this.insightsAnalystChatService.ask(parsed.data.question);
+		const dateFilter = this.resolveAnalystDateFilter(parsed.data);
+
+		return await this.insightsAnalystChatService.ask(parsed.data.question, dateFilter);
 	}
 
 	@Post('/analyst/chat/stream', { usesTemplates: true })
@@ -144,10 +146,15 @@ export class InsightsController {
 			throw new BadRequestError(parsed.error.errors.map(({ message }) => message).join(' '));
 		}
 
+		const dateFilter = this.resolveAnalystDateFilter(parsed.data);
+
 		res.header('Content-type', 'application/json-lines').flush();
 
 		try {
-			for await (const chunk of this.insightsAnalystChatService.askStream(parsed.data.question)) {
+			for await (const chunk of this.insightsAnalystChatService.askStream(
+				parsed.data.question,
+				dateFilter,
+			)) {
 				res.flush();
 				res.write(JSON.stringify(chunk) + STREAM_SEPARATOR);
 			}
@@ -209,6 +216,14 @@ export class InsightsController {
 		}
 
 		return { startDate: query.startDate, endDate: query.endDate ?? today };
+	}
+
+	private resolveAnalystDateFilter(
+		request: z.infer<typeof insightsAnalystChatRequestSchema>,
+	): { startDate: Date; endDate: Date } | undefined {
+		if (!request.startDate && !request.endDate) return undefined;
+
+		return this.prepareDateFilters(request);
 	}
 
 	private checkDatesFiltersAgainstLicense(dateFilters: { startDate: Date; endDate: Date }) {

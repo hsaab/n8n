@@ -467,5 +467,25 @@ describe('insights.api', () => {
 			);
 			expect(result).toEqual(response);
 		});
+
+		it('should serialize date filters in analyst chat requests', async () => {
+			const startDate = new Date('2025-01-01T00:00:00.000Z');
+			const endDate = new Date('2025-01-31T23:59:59.999Z');
+			const response = { answer: 'Done', mode: 'fallback', citations: [] };
+			vi.mocked(makeRestApiRequest).mockResolvedValue(response);
+
+			await askInsightsAnalyst(mockContext, { question: 'Summarize this', startDate, endDate });
+
+			expect(makeRestApiRequest).toHaveBeenCalledWith(
+				mockContext,
+				'POST',
+				'/insights/analyst/chat',
+				{
+					question: 'Summarize this',
+					startDate: '2025-01-01T00:00:00.000Z',
+					endDate: '2025-01-31T23:59:59.999Z',
+				},
+			);
+		});
 	});
 });

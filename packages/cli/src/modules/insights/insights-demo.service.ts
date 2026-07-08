@@ -127,14 +127,13 @@ export class InsightsDemoService {
 
 	private async deleteLegacyDemoProjects(): Promise<void> {
 		const demoWorkflowIds = INSIGHTS_ANALYST_DEMO_WORKFLOWS.map(({ id }) => id);
+		const legacyDemoLinks = await this.sharedWorkflowRepository.find({
+			where: { workflowId: In(demoWorkflowIds) },
+			select: { projectId: true, workflowId: true },
+		});
 		const legacyProjectIds = [
 			...new Set(
-				(
-					await this.sharedWorkflowRepository.find({
-						where: { workflowId: In(demoWorkflowIds) },
-						select: { projectId: true },
-					})
-				)
+				legacyDemoLinks
 					.map(({ projectId }) => projectId)
 					.filter((id) => id !== INSIGHTS_ANALYST_DEMO_PROJECT_ID),
 			),
@@ -142,18 +141,32 @@ export class InsightsDemoService {
 
 		if (legacyProjectIds.length === 0) return;
 
-		const legacyWorkflowIds = (
-			await this.sharedWorkflowRepository.find({
-				where: { projectId: In(legacyProjectIds) },
-				select: { workflowId: true },
-			})
-		).map(({ workflowId }) => workflowId);
+		const legacyDemoWorkflowIds = [
+			...new Set(
+				legacyDemoLinks
+					.filter(({ projectId }) => projectId !== INSIGHTS_ANALYST_DEMO_PROJECT_ID)
+					.map(({ workflowId }) => workflowId),
+			),
+		];
 
-		await this.deleteDemoWorkflows(legacyWorkflowIds);
+		await this.deleteDemoWorkflows(legacyDemoWorkflowIds);
+
+		const emptyLegacyProjectIds: string[] = [];
+		for (const projectId of legacyProjectIds) {
+			const remainingWorkflows = await this.sharedWorkflowRepository.count({
+				where: { projectId },
+			});
+			if (remainingWorkflows === 0) {
+				emptyLegacyProjectIds.push(projectId);
+			}
+		}
+
+		if (emptyLegacyProjectIds.length === 0) return;
+
 		await this.projectRepository.manager.delete(ProjectRelation, {
-			projectId: In(legacyProjectIds),
+			projectId: In(emptyLegacyProjectIds),
 		});
-		await this.projectRepository.delete({ id: In(legacyProjectIds) });
+		await this.projectRepository.delete({ id: In(emptyLegacyProjectIds) });
 	}
 
 	private async linkFirstOwnerToProject(project: Project): Promise<void> {

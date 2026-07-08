@@ -23,6 +23,8 @@ type ChatMessage = {
 const props = defineProps<{
 	suggestedPrompts: string[];
 	workflowRows: InsightsByWorkflow['data'];
+	startDate: Date;
+	endDate: Date;
 }>();
 
 const i18n = useI18n();
@@ -94,19 +96,23 @@ const submitPrompt = async (prompt = input.value) => {
 		streamingMessageId.value = responseMessageId;
 		await scrollToMessage(responseMessageId);
 
-		await insightsStore.streamAnalyst(question, (chunk) => {
-			const message = messages.value.find(({ id }) => id === responseMessageId);
-			if (!message) return;
+		await insightsStore.streamAnalyst(
+			question,
+			(chunk) => {
+				const message = messages.value.find(({ id }) => id === responseMessageId);
+				if (!message) return;
 
-			if (chunk.type === 'delta') {
-				message.content += chunk.text;
-				return;
-			}
+				if (chunk.type === 'delta') {
+					message.content += chunk.text;
+					return;
+				}
 
-			message.content = chunk.response.answer;
-			message.mode = chunk.response.mode;
-			message.citations = chunk.response.citations;
-		});
+				message.content = chunk.response.answer;
+				message.mode = chunk.response.mode;
+				message.citations = chunk.response.citations;
+			},
+			{ startDate: props.startDate, endDate: props.endDate },
+		);
 	} catch {
 		if (!responseMessageId) {
 			responseMessageId = `assistant-${Date.now()}`;

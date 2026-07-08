@@ -128,6 +128,26 @@ describe('InsightsAnalystChatService', () => {
 		expect(response.citations).toEqual([]);
 	});
 
+	test('passes date filters through to overview when asking', async () => {
+		const config = mock<InsightsConfig>({
+			analystAnthropicApiKey: '',
+			analystModel: 'claude-sonnet-4-5-20250929',
+		});
+		const startDate = new Date('2026-05-01T00:00:00.000Z');
+		const endDate = new Date('2026-05-19T00:00:00.000Z');
+		const demoService = mock<InsightsDemoService>({
+			getOverview: jest.fn().mockResolvedValue(overview),
+		});
+		const logger = mock<Logger>({
+			scoped: jest.fn().mockReturnThis(),
+		});
+		const service = new InsightsAnalystChatService(config, demoService, logger);
+
+		await service.ask('Which workflows saved us the most time?', { startDate, endDate });
+
+		expect(demoService.getOverview).toHaveBeenCalledWith({ startDate, endDate });
+	});
+
 	test('streams deterministic fallback when Anthropic key is empty', async () => {
 		const config = mock<InsightsConfig>({
 			analystAnthropicApiKey: '',

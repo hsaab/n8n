@@ -38,8 +38,11 @@ export class InsightsAnalystChatService {
 		this.logger = this.logger.scoped('insights');
 	}
 
-	async ask(question: string): Promise<InsightsAnalystChatResponse> {
-		const overview = await this.insightsDemoService.getOverview();
+	async ask(
+		question: string,
+		dateFilter?: { startDate: Date; endDate: Date },
+	): Promise<InsightsAnalystChatResponse> {
+		const overview = await this.insightsDemoService.getOverview(dateFilter);
 		if (!this.hasAnthropicApiKey()) {
 			return this.fallbackAnswer(question, overview);
 		}
@@ -57,8 +60,11 @@ export class InsightsAnalystChatService {
 		return this.fallbackAnswer(question, overview);
 	}
 
-	async *askStream(question: string): AsyncGenerator<InsightsAnalystChatStreamChunk> {
-		const overview = await this.insightsDemoService.getOverview();
+	async *askStream(
+		question: string,
+		dateFilter?: { startDate: Date; endDate: Date },
+	): AsyncGenerator<InsightsAnalystChatStreamChunk> {
+		const overview = await this.insightsDemoService.getOverview(dateFilter);
 		if (!this.hasAnthropicApiKey()) {
 			yield { type: 'complete', response: this.fallbackAnswer(question, overview) };
 			return;

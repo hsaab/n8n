@@ -177,8 +177,22 @@ export type InsightsAnalystOverview = z.infer<typeof insightsAnalystOverviewSche
 export const insightsAnalystChatRequestSchema = z
 	.object({
 		question: z.string().trim().min(1).max(1_000),
+		startDate: z.coerce.date().optional(),
+		endDate: z.coerce.date().optional(),
 	})
-	.strict();
+	.strict()
+	.refine(
+		(data) => {
+			if (data.startDate && data.endDate) {
+				return data.startDate <= data.endDate;
+			}
+			return true;
+		},
+		{
+			message: 'endDate must be the same as or after startDate',
+			path: ['endDate'],
+		},
+	);
 export type InsightsAnalystChatRequest = z.infer<typeof insightsAnalystChatRequestSchema>;
 
 export const insightsAnalystChatResponseSchema = z

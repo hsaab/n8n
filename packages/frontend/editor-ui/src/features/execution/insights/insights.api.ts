@@ -79,11 +79,30 @@ export const fetchInsightsAnalystOverview = async (
 		serializeInsightsFilter(filter),
 	);
 
+export function serializeAnalystChatRequest(request: InsightsAnalystChatRequest) {
+	const { startDate, endDate, ...rest } = request;
+	const serialized: Record<string, unknown> = { ...rest };
+
+	if (startDate) {
+		serialized.startDate = startDate.toISOString();
+	}
+	if (endDate) {
+		serialized.endDate = endDate.toISOString();
+	}
+
+	return serialized;
+}
+
 export const askInsightsAnalyst = async (
 	context: IRestApiContext,
 	request: InsightsAnalystChatRequest,
 ): Promise<InsightsAnalystChatResponse> =>
-	await makeRestApiRequest(context, 'POST', '/insights/analyst/chat', request);
+	await makeRestApiRequest(
+		context,
+		'POST',
+		'/insights/analyst/chat',
+		serializeAnalystChatRequest(request),
+	);
 
 export type InsightsAnalystChatStreamChunk =
 	| { type: 'delta'; text: string }
@@ -97,6 +116,6 @@ export const streamInsightsAnalyst = async (
 	await streamRequest<InsightsAnalystChatStreamChunk>(
 		context,
 		'/insights/analyst/chat/stream',
-		request,
+		serializeAnalystChatRequest(request),
 		onChunk,
 	);

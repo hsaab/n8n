@@ -80,15 +80,26 @@ export const useInsightsStore = defineStore('insights', () => {
 		{ immediate: false, resetOnExecute: false },
 	);
 
-	const askAnalyst = async (question: string): Promise<InsightsAnalystChatResponse> => {
-		return await insightsApi.askInsightsAnalyst(rootStore.restApiContext, { question });
+	const askAnalyst = async (
+		question: string,
+		filter?: InsightsDateFilterDto,
+	): Promise<InsightsAnalystChatResponse> => {
+		return await insightsApi.askInsightsAnalyst(rootStore.restApiContext, {
+			question,
+			...filter,
+		});
 	};
 
 	const streamAnalyst = async (
 		question: string,
 		onChunk: (chunk: insightsApi.InsightsAnalystChatStreamChunk) => void,
+		filter?: InsightsDateFilterDto,
 	): Promise<void> => {
-		await insightsApi.streamInsightsAnalyst(rootStore.restApiContext, { question }, onChunk);
+		await insightsApi.streamInsightsAnalyst(
+			rootStore.restApiContext,
+			{ question, ...filter },
+			onChunk,
+		);
 	};
 
 	return {
