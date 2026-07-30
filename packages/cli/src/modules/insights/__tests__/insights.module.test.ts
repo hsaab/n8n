@@ -1,17 +1,20 @@
 import { LicenseState, Logger } from '@n8n/backend-common';
-import { createTeamProject, mockLogger, testDb } from '@n8n/backend-test-utils';
+import { createTeamProject, testDb } from '@n8n/backend-test-utils';
 import type { InstanceType } from '@n8n/constants';
 import { Container } from '@n8n/di';
 import type { MockProxy } from 'jest-mock-extended';
 import { mock } from 'jest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
 
+import { InsightsDemoService } from '../insights-demo.service';
 import { InsightsModule } from '../insights.module';
 import { InsightsService } from '../insights.service';
 
 describe('InsightsModule', () => {
 	let insightsModule: InsightsModule;
 	let mockInstanceSettings: MockProxy<InstanceSettings>;
+	let insightsDemoService: MockProxy<InsightsDemoService>;
+	let scopedLogger: MockProxy<Logger>;
 
 	beforeAll(async () => {
 		await testDb.init();
@@ -26,8 +29,11 @@ describe('InsightsModule', () => {
 		await testDb.truncate(['Project']);
 
 		mockInstanceSettings = mock<InstanceSettings>();
+		scopedLogger = mock<Logger>();
+		const logger = mock<Logger>();
+		logger.scoped.mockReturnValue(scopedLogger);
 		Container.set(InstanceSettings, mockInstanceSettings);
-		Container.set(Logger, mockLogger());
+		Container.set(Logger, logger);
 		Container.set(LicenseState, mock<LicenseState>());
 		Container.set(
 			InsightsService,
@@ -40,6 +46,9 @@ describe('InsightsModule', () => {
 				Container.get(Logger),
 			),
 		);
+		insightsDemoService = mock<InsightsDemoService>();
+		insightsDemoService.seed.mockResolvedValue(undefined);
+		Container.set(InsightsDemoService, insightsDemoService);
 		insightsModule = Container.get(InsightsModule);
 		await createTeamProject();
 	});
@@ -86,5 +95,23 @@ describe('InsightsModule', () => {
 				expect(require.cache[collectionServicePath]).toBeDefined();
 			},
 		);
+	});
+
+	describe('Insights Analyst demo seeding', () => {
+		it('seeds Insights Analyst demo data on every module init', async () => {
+			await insightsModule.init();
+
+			expect(insightsDemoService.seed).toHaveBeenCalledTimes(1);
+		});
+
+		it('should not fail module initialization when demo data seeding fails', async () => {
+			const seedError = new Error('Failed to seed demo data');
+			insightsDemoService.seed.mockRejectedValueOnce(seedError);
+
+			await expect(insightsModule.init()).resolves.toBeUndefined();
+			expect(scopedLogger.warn).toHaveBeenCalledWith('Failed to seed Insights Analyst demo data', {
+				error: seedError,
+			});
+		});
 	});
 });
