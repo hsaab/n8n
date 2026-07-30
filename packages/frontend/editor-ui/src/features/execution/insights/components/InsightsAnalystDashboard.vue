@@ -15,6 +15,7 @@ import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { VIEWS } from '@/app/constants';
 import InsightsSummary from '@/features/execution/insights/components/InsightsSummary.vue';
 import InsightsDataRangePicker from '@/features/execution/insights/components/InsightsDataRangePicker.vue';
+import InsightsAnalystPanel from '@/features/execution/insights/components/InsightsAnalystPanel.vue';
 import { useInsightsStore } from '@/features/execution/insights/insights.store';
 import { INSIGHT_TYPES } from '@/features/execution/insights/insights.constants';
 import {
@@ -251,6 +252,12 @@ onMounted(async () => {
 							</div>
 						</section>
 					</div>
+
+					<InsightsAnalystPanel
+						:suggested-prompts="overview.suggestedPrompts"
+						:workflow-rows="workflowRows"
+						:class="$style.chat"
+					/>
 				</section>
 			</template>
 		</div>
@@ -320,9 +327,21 @@ onMounted(async () => {
 
 .layout {
 	display: grid;
-	grid-template-columns: minmax(0, 1fr);
+	grid-template-columns:
+		minmax(0, 1fr)
+		minmax(
+			calc(var(--spacing--5xl) + var(--spacing--xl) + var(--spacing--xl)),
+			calc(var(--spacing--5xl) + var(--spacing--3xl) + var(--spacing--xl))
+		);
 	gap: var(--spacing--xl);
 	align-items: start;
+
+	// The analyst rail needs enough room to sit beside the dashboard without
+	// compressing cards or charts. Stack earlier than the regular Insights
+	// page so medium desktop and laptop widths stay clean.
+	@media (max-width: vars.$breakpoint-lg) {
+		grid-template-columns: minmax(0, 1fr);
+	}
 }
 
 .main {
@@ -514,5 +533,18 @@ onMounted(async () => {
 
 .lowImpactTile span {
 	font-weight: var(--font-weight--bold);
+}
+
+.chat {
+	position: sticky;
+	top: var(--spacing--lg);
+	align-self: start;
+	min-width: 0;
+
+	// Once the dashboard collapses to a single column, the chat sits
+	// below the main content and shouldn't try to stick to the viewport.
+	@media (max-width: vars.$breakpoint-lg) {
+		position: static;
+	}
 }
 </style>

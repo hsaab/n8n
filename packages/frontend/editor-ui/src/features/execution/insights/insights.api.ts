@@ -1,10 +1,12 @@
-import { makeRestApiRequest } from '@n8n/rest-api-client';
+import { makeRestApiRequest, streamRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import type {
 	InsightsSummary,
 	InsightsByTime,
 	InsightsByWorkflow,
 	InsightsAnalystOverview,
+	InsightsAnalystChatRequest,
+	InsightsAnalystChatResponse,
 	ListInsightsWorkflowQueryDto,
 	InsightsDateFilterDto,
 } from '@n8n/api-types';
@@ -70,3 +72,25 @@ export const fetchInsightsAnalystOverview = async (
 	context: IRestApiContext,
 ): Promise<InsightsAnalystOverview> =>
 	await makeRestApiRequest(context, 'GET', '/insights/analyst/overview');
+
+export const askInsightsAnalyst = async (
+	context: IRestApiContext,
+	request: InsightsAnalystChatRequest,
+): Promise<InsightsAnalystChatResponse> =>
+	await makeRestApiRequest(context, 'POST', '/insights/analyst/chat', request);
+
+export type InsightsAnalystChatStreamChunk =
+	| { type: 'delta'; text: string }
+	| { type: 'complete'; response: InsightsAnalystChatResponse };
+
+export const streamInsightsAnalyst = async (
+	context: IRestApiContext,
+	request: InsightsAnalystChatRequest,
+	onChunk: (chunk: InsightsAnalystChatStreamChunk) => void,
+): Promise<void> =>
+	await streamRequest<InsightsAnalystChatStreamChunk>(
+		context,
+		'/insights/analyst/chat/stream',
+		request,
+		onChunk,
+	);

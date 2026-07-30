@@ -1,0 +1,349 @@
+<script setup lang="ts">
+import { computed, nextTick, ref, useTemplateRef } from 'vue';
+import type {
+	InsightsAnalystChatResponse,
+	InsightsAnalystCitation,
+	InsightsByWorkflow,
+} from '@n8n/api-types';
+import { N8nHeading, N8nIcon } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
+import ChatInputBase from '@/features/ai/shared/components/ChatInputBase.vue';
+import ChatTypingIndicator from '@/features/ai/chatHub/components/ChatTypingIndicator.vue';
+import InsightsAnalystMessageContent from '@/features/execution/insights/components/InsightsAnalystMessageContent.vue';
+import { useInsightsStore } from '@/features/execution/insights/insights.store';
+
+type ChatMessage = {
+	id: string;
+	role: 'user' | 'assistant';
+	content: string;
+	mode?: InsightsAnalystChatResponse['mode'];
+	citations?: InsightsAnalystCitation[];
+};
+
+const props = defineProps<{
+	suggestedPrompts: string[];
+	workflowRows: InsightsByWorkflow['data'];
+}>();
+
+const i18n = useI18n();
+const insightsStore = useInsightsStore();
+const input = ref('');
+const isWaiting = ref(false);
+const isStreaming = ref(false);
+const streamingMessageId = ref('');
+const messages = ref<ChatMessage[]>([
+	{
+		id: 'welcome',
+		role: 'assistant',
+		content: i18n.baseText('insights.analyst.chat.welcome'),
+		citations: [],
+	},
+]);
+const scrollContainer = useTemplateRef<HTMLElement>('scrollContainer');
+
+const canSubmit = computed(
+	() => input.value.trim().length > 0 && !isWaiting.value && !isStreaming.value,
+);
+const showSuggestedPrompts = computed(
+	() => messages.value.length === 1 && props.suggestedPrompts.length > 0,
+);
+
+const scrollToBottom = async () => {
+	await nextTick();
+	scrollContainer.value?.scrollTo({ top: scrollContainer.value.scrollHeight, behavior: 'smooth' });
+};
+
+const scrollToMessage = async (messageId: string) => {
+	await nextTick();
+
+	const container = scrollContainer.value;
+	const messageElement = container?.querySelector<HTMLElement>(`[data-message-id="${messageId}"]`);
+
+	if (!container || !messageElement) return;
+
+	container.scrollTo({
+		top: messageElement.offsetTop - container.offsetTop,
+		behavior: 'smooth',
+	});
+};
+
+const ensureAssistantMessage = (messageId: string) => {
+	if (messages.value.some(({ id }) => id === messageId)) return;
+
+	messages.value.push({
+		id: messageId,
+		role: 'assistant',
+		content: '',
+		citations: [],
+	});
+};
+
+const submitPrompt = async (prompt = input.value) => {
+	const question = prompt.trim();
+	if (!question || isWaiting.value || isStreaming.value) return;
+
+	messages.value.push({
+		id: `user-${Date.now()}`,
+		role: 'user',
+		content: question,
+	});
+	input.value = '';
+	// Keep waiting until the store stream settles or emits its first chunk so
+	// the typing indicator stays visible while the request is pending.
+	isWaiting.value = true;
+	await scrollToBottom();
+
+	let responseMessageId = '';
+	try {
+		responseMessageId = `assistant-${Date.now()}`;
+
+		await insightsStore.streamAnalyst(question, (chunk) => {
+			ensureAssistantMessage(responseMessageId);
+			isWaiting.value = false;
+			isStreaming.value = true;
+			streamingMessageId.value = responseMessageId;
+			void scrollToMessage(responseMessageId);
+
+			const message = messages.value.find(({ id }) => id === responseMessageId);
+			if (!message) return;
+
+			if (chunk.type === 'delta') {
+				message.content += chunk.text;
+				return;
+			}
+
+			message.content = chunk.response.answer;
+			message.mode = chunk.response.mode;
+			message.citations = chunk.response.citations;
+		});
+	} catch {
+		if (!responseMessageId) {
+			responseMessageId = `assistant-${Date.now()}`;
+		}
+
+		ensureAssistantMessage(responseMessageId);
+		const message = messages.value.find(({ id }) => id === responseMessageId);
+		if (message) {
+			message.content = i18n.baseText('insights.analyst.chat.error');
+			message.citations = [];
+		}
+	} finally {
+		isWaiting.value = false;
+		isStreaming.value = false;
+		streamingMessageId.value = '';
+		if (responseMessageId) {
+			await scrollToMessage(responseMessageId);
+		}
+	}
+};
+</script>
+
+<template>
+	<aside :class="$style.panel" data-test-id="insights-analyst-panel">
+		<header :class="$style.header">
+			<div>
+				<N8nHeading tag="h3" size="medium" bold>
+					{{ i18n.baseText('insights.analyst.chat.title') }}
+				</N8nHeading>
+				<p>{{ i18n.baseText('insights.analyst.chat.description') }}</p>
+			</div>
+		</header>
+
+		<div ref="scrollContainer" :class="$style.messages">
+			<div
+				v-for="message in messages"
+				:key="message.id"
+				:data-message-id="message.id"
+				:class="[$style.message, $style[message.role]]"
+			>
+				<div :class="$style.bubble">
+					<div v-if="message.mode === 'llm'" :class="$style.powered">
+						<N8nIcon icon="sparkles" size="small" />
+						{{ i18n.baseText('insights.analyst.chat.poweredByClaude') }}
+					</div>
+					<InsightsAnalystMessageContent
+						v-if="message.role === 'assistant' && message.id !== 'welcome'"
+						:content="message.content"
+						:citations="message.citations"
+						:workflow-rows="props.workflowRows"
+						:is-streaming="isStreaming && message.id === streamingMessageId"
+					/>
+					<p v-else>{{ message.content }}</p>
+				</div>
+			</div>
+			<div v-if="isWaiting" :class="[$style.message, $style.assistant]">
+				<div :class="[$style.bubble, $style.waitingBubble]">
+					<ChatTypingIndicator />
+					<span>{{ i18n.baseText('insights.analyst.chat.thinking') }}</span>
+				</div>
+			</div>
+		</div>
+
+		<div :class="$style.promptArea">
+			<div v-if="showSuggestedPrompts" :class="$style.suggestions">
+				<button
+					v-for="prompt in props.suggestedPrompts"
+					:key="prompt"
+					type="button"
+					:class="$style.suggestion"
+					:disabled="isWaiting"
+					@click="submitPrompt(prompt)"
+				>
+					{{ prompt }}
+				</button>
+			</div>
+			<ChatInputBase
+				v-model="input"
+				:placeholder="i18n.baseText('insights.analyst.chat.placeholder')"
+				:is-streaming="isStreaming"
+				:can-submit="canSubmit"
+				:disabled="isWaiting || isStreaming"
+				:show-voice="false"
+				:show-attach="false"
+				@submit="submitPrompt()"
+			/>
+		</div>
+	</aside>
+</template>
+
+<style lang="scss" module>
+@use '@/app/css/variables' as vars;
+@use '@/features/ai/shared/styles/prompt-suggestion-buttons';
+
+.panel {
+	display: grid;
+	grid-template-rows: auto 1fr auto;
+	min-height: 0;
+	height: min(
+		calc(100vh - var(--spacing--5xl) - var(--spacing--xl)),
+		calc(var(--spacing--5xl) + var(--spacing--5xl) + var(--spacing--3xl))
+	);
+	border: var(--border);
+	border-radius: var(--radius--xl);
+	background: var(--background--surface);
+	overflow: hidden;
+
+	// Keep this in sync with the dashboard breakpoint where the chat rail
+	// stacks below the main content. A viewport-tall panel in that layout
+	// reads like it is covering the dashboard instead of following it.
+	@media (max-width: vars.$breakpoint-lg) {
+		height: auto;
+		min-height: calc(var(--spacing--5xl) + var(--spacing--3xl));
+	}
+
+	@media (max-width: vars.$breakpoint-xs) {
+		min-height: 0;
+	}
+}
+
+.header {
+	display: flex;
+	justify-content: space-between;
+	gap: var(--spacing--sm);
+	padding: var(--spacing--lg);
+	border-bottom: var(--border);
+
+	p {
+		margin: var(--spacing--3xs) 0 0;
+		color: var(--text-color--subtle);
+	}
+
+	@media (max-width: vars.$breakpoint-xs) {
+		padding: var(--spacing--md);
+	}
+}
+
+.messages {
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--sm);
+	padding: var(--spacing--lg);
+	overflow: auto;
+	min-height: 0;
+
+	@media (max-width: vars.$breakpoint-xs) {
+		padding: var(--spacing--md);
+	}
+}
+
+.message {
+	display: flex;
+}
+
+.user {
+	justify-content: flex-end;
+}
+
+.assistant {
+	justify-content: stretch;
+}
+
+.bubble {
+	max-width: min(100%, var(--content-container--width));
+	padding: var(--spacing--sm);
+	border-radius: var(--radius--xl);
+	background: var(--background--subtle);
+	color: var(--text-color);
+
+	p {
+		margin: 0;
+		line-height: var(--line-height--lg);
+		overflow-wrap: anywhere;
+		white-space: pre-wrap;
+	}
+}
+
+.user .bubble {
+	background: var(--background--brand);
+	color: var(--color--foreground-xlight);
+}
+
+.assistant .bubble {
+	width: 100%;
+}
+
+.waitingBubble {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--xs);
+	color: var(--text-color--subtle);
+}
+
+.powered {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	margin-bottom: var(--spacing--xs);
+	color: var(--text-color--subtle);
+	font-size: var(--font-size--2xs);
+}
+
+.promptArea {
+	position: sticky;
+	bottom: 0;
+	display: grid;
+	gap: var(--spacing--sm);
+	padding: var(--spacing--lg);
+	border-top: var(--border);
+	background: var(--background--surface);
+
+	@media (max-width: vars.$breakpoint-lg) {
+		position: static;
+	}
+
+	@media (max-width: vars.$breakpoint-xs) {
+		padding: var(--spacing--md);
+	}
+}
+
+.suggestions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--spacing--2xs);
+}
+
+.suggestion {
+	@include prompt-suggestion-buttons.prompt-suggestion-button;
+}
+</style>
