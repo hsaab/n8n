@@ -1,21 +1,29 @@
 import type {
+	InsightsAnalystChatResponse,
 	InsightsAnalystOverview,
 	InsightsByTime,
 	InsightsByWorkflow,
 	InsightsSummary,
 	RestrictedInsightsByTime,
 } from '@n8n/api-types';
-import { InsightsDateFilterDto, ListInsightsWorkflowQueryDto } from '@n8n/api-types';
+import {
+	InsightsDateFilterDto,
+	ListInsightsWorkflowQueryDto,
+	insightsAnalystChatRequestSchema,
+} from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
-import { Get, GlobalScope, Licensed, Query, RestController } from '@n8n/decorators';
+import { Get, GlobalScope, Licensed, Post, Query, RestController } from '@n8n/decorators';
 import { DateTime } from 'luxon';
 import { UserError } from 'n8n-workflow';
 import { z } from 'zod';
 
+import type { FlushableResponse } from '@/controllers/ai.controller';
+import { STREAM_SEPARATOR } from '@/constants';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 
+import { InsightsAnalystChatService } from './insights-analyst-chat.service';
 import { InsightsDemoService } from './insights-demo.service';
 import { InsightsService } from './insights.service';
 
@@ -24,6 +32,7 @@ export class InsightsController {
 	constructor(
 		private readonly insightsService: InsightsService,
 		private readonly insightsDemoService: InsightsDemoService,
+		private readonly insightsAnalystChatService: InsightsAnalystChatService,
 	) {}
 
 	@Get('/summary')
@@ -108,6 +117,40 @@ export class InsightsController {
 	@GlobalScope('insights:list')
 	async getInsightsAnalystOverview(): Promise<InsightsAnalystOverview> {
 		return await this.insightsDemoService.getOverview();
+	}
+
+	@Post('/analyst/chat')
+	@GlobalScope('insights:list')
+	async askInsightsAnalyst(
+		req: AuthenticatedRequest,
+		_res: Response,
+	): Promise<InsightsAnalystChatResponse> {
+		const parsed = insightsAnalystChatRequestSchema.safeParse(req.body);
+		if (!parsed.success) {
+			throw new BadRequestError(parsed.error.errors.map(({ message }) => message).join(' '));
+		}
+
+		return await this.insightsAnalystChatService.ask(parsed.data.question);
+	}
+
+	@Post('/analyst/chat/stream', { usesTemplates: true })
+	@GlobalScope('insights:list')
+	async streamInsightsAnalyst(req: AuthenticatedRequest, res: FlushableResponse): Promise<void> {
+		const parsed = insightsAnalystChatRequestSchema.safeParse(req.body);
+		if (!parsed.success) {
+			throw new BadRequestError(parsed.error.errors.map(({ message }) => message).join(' '));
+		}
+
+		res.header('Content-type', 'application/json-lines').flush();
+
+		try {
+			for await (const chunk of this.insightsAnalystChatService.askStream(parsed.data.question)) {
+				res.flush();
+				res.write(JSON.stringify(chunk) + STREAM_SEPARATOR);
+			}
+		} finally {
+			res.end();
+		}
 	}
 
 	private validateQueryDates(query: InsightsDateFilterDto | ListInsightsWorkflowQueryDto) {
