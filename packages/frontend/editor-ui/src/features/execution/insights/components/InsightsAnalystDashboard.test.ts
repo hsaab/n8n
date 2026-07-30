@@ -224,9 +224,8 @@ describe('InsightsAnalystDashboard', () => {
 				expect(screen.getByTestId('insights-chart-total')).toBeInTheDocument();
 				expect(screen.getByText('Invoice intake triage leads time saved')).toBeInTheDocument();
 				expect(screen.getByText('Invoice intake triage')).toBeInTheDocument();
+				expect(screen.getByTestId('insights-analyst-panel')).toBeInTheDocument();
 			});
-
-			expect(screen.queryByTestId('insights-analyst-panel')).not.toBeInTheDocument();
 		});
 
 		it('does not refetch live Insights list endpoints on mount', () => {
