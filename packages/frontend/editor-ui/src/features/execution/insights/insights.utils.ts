@@ -16,6 +16,18 @@ const DATE_FORMAT_DAY_MONTH = 'd mmm';
 
 export const transformInsightsTimeSaved = (minutes: number): number =>
 	Math.round(minutes / (Math.abs(minutes) < 60 ? 1 : 60)); // we want to show saved time in minutes or hours
+
+export const formatInsightsTimeSavedLabel = (minutes: number): string => {
+	const i18n = useI18n();
+	const count = transformInsightsTimeSaved(minutes);
+	const key = Math.abs(minutes) < 60 ? 'insights.timeSaved.minutes' : 'insights.timeSaved.hours';
+
+	return i18n.baseText(key, {
+		interpolate: { count },
+		adjustToNumber: Math.abs(count),
+	});
+};
+
 export const transformInsightsAverageRunTime = (ms: number): number => ms / 1000; // we want to show average run time in seconds
 export const transformInsightsFailureRate = (value: number): number => value * 100; // we want to show failure rate in percentage
 

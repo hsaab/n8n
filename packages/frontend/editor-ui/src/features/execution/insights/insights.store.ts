@@ -66,6 +66,14 @@ export const useInsightsStore = defineStore('insights', () => {
 		{ immediate: false, resetOnExecute: false },
 	);
 
+	const analystOverview = useAsyncState(
+		async () => {
+			return await insightsApi.fetchInsightsAnalystOverview(rootStore.restApiContext);
+		},
+		null,
+		{ immediate: false, resetOnExecute: false },
+	);
+
 	const dateRanges = computed(() => settingsStore.moduleSettings.insights?.dateRanges ?? []);
 
 	return {
@@ -78,5 +86,6 @@ export const useInsightsStore = defineStore('insights', () => {
 		charts,
 		table,
 		dateRanges,
+		analystOverview,
 	};
 });

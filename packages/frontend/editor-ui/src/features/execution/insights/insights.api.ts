@@ -4,6 +4,7 @@ import type {
 	InsightsSummary,
 	InsightsByTime,
 	InsightsByWorkflow,
+	InsightsAnalystOverview,
 	ListInsightsWorkflowQueryDto,
 	InsightsDateFilterDto,
 } from '@n8n/api-types';
@@ -64,3 +65,8 @@ export const fetchInsightsByWorkflow = async (
 		'/insights/by-workflow',
 		serializeInsightsFilter(filter),
 	);
+
+export const fetchInsightsAnalystOverview = async (
+	context: IRestApiContext,
+): Promise<InsightsAnalystOverview> =>
+	await makeRestApiRequest(context, 'GET', '/insights/analyst/overview');
