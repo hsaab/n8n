@@ -1,4 +1,5 @@
 import type {
+	InsightsAnalystOverview,
 	InsightsByTime,
 	InsightsByWorkflow,
 	InsightsSummary,
@@ -15,11 +16,15 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 
+import { InsightsDemoService } from './insights-demo.service';
 import { InsightsService } from './insights.service';
 
 @RestController('/insights')
 export class InsightsController {
-	constructor(private readonly insightsService: InsightsService) {}
+	constructor(
+		private readonly insightsService: InsightsService,
+		private readonly insightsDemoService: InsightsDemoService,
+	) {}
 
 	@Get('/summary')
 	@GlobalScope('insights:list')
@@ -97,6 +102,12 @@ export class InsightsController {
 			startDate,
 			endDate,
 		})) as RestrictedInsightsByTime[];
+	}
+
+	@Get('/analyst/overview')
+	@GlobalScope('insights:list')
+	async getInsightsAnalystOverview(): Promise<InsightsAnalystOverview> {
+		return await this.insightsDemoService.getOverview();
 	}
 
 	private validateQueryDates(query: InsightsDateFilterDto | ListInsightsWorkflowQueryDto) {
