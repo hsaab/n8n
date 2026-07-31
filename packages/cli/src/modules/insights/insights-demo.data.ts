@@ -2,6 +2,8 @@ import type { InsightsSummaryUnit } from '@n8n/api-types';
 
 export const INSIGHTS_ANALYST_DEMO_PROJECT_ID = 'ins-demo-project';
 export const INSIGHTS_ANALYST_DEMO_PROJECT_NAME = 'Demo Operations';
+export const INSIGHTS_ANALYST_DEMO_PROJECT_DESCRIPTION =
+	'Seeded project for local Insights Analyst demos.';
 
 export type InsightsAnalystDemoWorkflow = {
 	id: string;

@@ -135,6 +135,32 @@ describe('InsightsAnalystChatService', () => {
 		);
 	});
 
+	test('returns empty-data fallback when overview has no workflow rows', async () => {
+		const emptyOverview: InsightsAnalystOverview = {
+			...overview,
+			byWorkflow: { count: 0, data: [] },
+		};
+		const config = mock<InsightsConfig>({
+			analystAnthropicApiKey: '',
+			analystModel: 'claude-sonnet-4-5-20250929',
+		});
+		const demoService = mock<InsightsDemoService>({
+			getOverview: jest.fn().mockResolvedValue(emptyOverview),
+		});
+		const logger = mock<Logger>({
+			scoped: jest.fn().mockReturnThis(),
+		});
+		const service = new InsightsAnalystChatService(config, demoService, logger);
+
+		const response = await service.ask('Which workflows saved us the most time?');
+
+		expect(response).toEqual({
+			mode: 'fallback',
+			answer: expect.stringContaining('No workflow Insights data'),
+			citations: [],
+		});
+	});
+
 	test('returns mode llm with answer and citations when Anthropic key is set', async () => {
 		generateObject.mockResolvedValue({
 			object: {

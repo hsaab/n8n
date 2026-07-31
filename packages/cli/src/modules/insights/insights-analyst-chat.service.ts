@@ -191,6 +191,15 @@ export class InsightsAnalystChatService {
 		const lowestTimeSaved = this.getLowestBy(rows, 'timeSaved');
 		const mostFailures = this.getTopBy(rows, 'failed');
 
+		if (!topTimeSaved || !lowestTimeSaved || !mostFailures) {
+			return {
+				mode: 'fallback',
+				answer:
+					'No workflow Insights data is available for this demo workspace yet. Re-run the Insights Analyst seed, then ask again.',
+				citations: [],
+			};
+		}
+
 		if (normalized.includes('fail')) {
 			return {
 				mode: 'fallback',
@@ -225,14 +234,16 @@ export class InsightsAnalystChatService {
 	private getTopBy(
 		rows: InsightsByWorkflow['data'],
 		key: 'timeSaved' | 'failed',
-	): InsightsByWorkflow['data'][number] {
+	): InsightsByWorkflow['data'][number] | undefined {
+		if (rows.length === 0) return undefined;
 		return [...rows].sort((a, b) => b[key] - a[key])[0];
 	}
 
 	private getLowestBy(
 		rows: InsightsByWorkflow['data'],
 		key: 'timeSaved',
-	): InsightsByWorkflow['data'][number] {
+	): InsightsByWorkflow['data'][number] | undefined {
+		if (rows.length === 0) return undefined;
 		return [...rows].sort((a, b) => a[key] - b[key])[0];
 	}
 

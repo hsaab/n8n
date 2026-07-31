@@ -5,6 +5,7 @@ import { Container } from '@n8n/di';
 import { DateTime } from 'luxon';
 
 import {
+	INSIGHTS_ANALYST_DEMO_PROJECT_DESCRIPTION,
 	INSIGHTS_ANALYST_DEMO_PROJECT_ID,
 	INSIGHTS_ANALYST_DEMO_PROJECT_NAME,
 	INSIGHTS_ANALYST_DEMO_WORKFLOWS,
@@ -61,14 +62,17 @@ describe('InsightsDemoService (Integration)', () => {
 	});
 
 	test('running seed twice does not duplicate Demo Operations and cleans stale duplicates', async () => {
+		const projectRepository = Container.get(ProjectRepository);
 		const staleProject = await createTeamProject(INSIGHTS_ANALYST_DEMO_PROJECT_NAME);
 		expect(staleProject.id).not.toBe(INSIGHTS_ANALYST_DEMO_PROJECT_ID);
+		staleProject.description = INSIGHTS_ANALYST_DEMO_PROJECT_DESCRIPTION;
+		await projectRepository.save(staleProject);
 
 		const service = Container.get(InsightsDemoService);
 
 		await service.seed();
 		const afterFirstSeed = {
-			projects: await Container.get(ProjectRepository).count({
+			projects: await projectRepository.count({
 				where: { name: INSIGHTS_ANALYST_DEMO_PROJECT_NAME },
 			}),
 			workflows: await Container.get(WorkflowRepository).count(),
@@ -76,7 +80,7 @@ describe('InsightsDemoService (Integration)', () => {
 
 		await service.seed();
 		const afterSecondSeed = {
-			projects: await Container.get(ProjectRepository).count({
+			projects: await projectRepository.count({
 				where: { name: INSIGHTS_ANALYST_DEMO_PROJECT_NAME },
 			}),
 			workflows: await Container.get(WorkflowRepository).count(),
@@ -86,15 +90,35 @@ describe('InsightsDemoService (Integration)', () => {
 		expect(afterSecondSeed.projects).toBe(1);
 		expect(afterSecondSeed.workflows).toBe(INSIGHTS_ANALYST_DEMO_WORKFLOWS.length);
 
-		const project = await Container.get(ProjectRepository).findOneByOrFail({
+		const project = await projectRepository.findOneByOrFail({
 			id: INSIGHTS_ANALYST_DEMO_PROJECT_ID,
 		});
 		expect(project.name).toBe(INSIGHTS_ANALYST_DEMO_PROJECT_NAME);
 
-		const staleStillPresent = await Container.get(ProjectRepository).findOneBy({
+		const staleStillPresent = await projectRepository.findOneBy({
 			id: staleProject.id,
 		});
 		expect(staleStillPresent).toBeNull();
+	});
+
+	test('seed does not delete a customer project that only shares the Demo Operations name', async () => {
+		const projectRepository = Container.get(ProjectRepository);
+		const customerProject = await createTeamProject(INSIGHTS_ANALYST_DEMO_PROJECT_NAME);
+		expect(customerProject.id).not.toBe(INSIGHTS_ANALYST_DEMO_PROJECT_ID);
+		expect(customerProject.description).not.toBe(INSIGHTS_ANALYST_DEMO_PROJECT_DESCRIPTION);
+
+		await Container.get(InsightsDemoService).seed();
+
+		const customerStillPresent = await projectRepository.findOneBy({
+			id: customerProject.id,
+		});
+		expect(customerStillPresent).not.toBeNull();
+		expect(customerStillPresent?.name).toBe(INSIGHTS_ANALYST_DEMO_PROJECT_NAME);
+
+		const demoProject = await projectRepository.findOneByOrFail({
+			id: INSIGHTS_ANALYST_DEMO_PROJECT_ID,
+		});
+		expect(demoProject.description).toBe(INSIGHTS_ANALYST_DEMO_PROJECT_DESCRIPTION);
 	});
 
 	test('production Insights summary path sees seeded aggregates for demo workflows', async () => {

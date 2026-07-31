@@ -28,6 +28,7 @@ import { InsightsMetadata } from './database/entities/insights-metadata';
 import { InsightsByPeriodRepository } from './database/repositories/insights-by-period.repository';
 import { InsightsMetadataRepository } from './database/repositories/insights-metadata.repository';
 import {
+	INSIGHTS_ANALYST_DEMO_PROJECT_DESCRIPTION,
 	INSIGHTS_ANALYST_DEMO_PROJECT_ID,
 	INSIGHTS_ANALYST_DEMO_PROJECT_NAME,
 	INSIGHTS_ANALYST_DEMO_WORKFLOWS,
@@ -113,15 +114,20 @@ export class InsightsDemoService {
 			name: INSIGHTS_ANALYST_DEMO_PROJECT_NAME,
 			type: 'team',
 			icon: { type: 'icon', value: 'chart-column-decreasing' },
-			description: 'Seeded project for local Insights Analyst demos.',
+			description: INSIGHTS_ANALYST_DEMO_PROJECT_DESCRIPTION,
 		});
 
 		return await this.projectRepository.save(project);
 	}
 
 	private async deleteLegacyDemoProjects(): Promise<void> {
+		// Only remove prior seed shells (matched by seeded description), never a
+		// customer project that happens to share the Demo Operations display name.
 		const legacyProjects = await this.projectRepository.find({
-			where: { name: INSIGHTS_ANALYST_DEMO_PROJECT_NAME },
+			where: {
+				name: INSIGHTS_ANALYST_DEMO_PROJECT_NAME,
+				description: INSIGHTS_ANALYST_DEMO_PROJECT_DESCRIPTION,
+			},
 			select: { id: true },
 		});
 		const legacyProjectIds = legacyProjects
