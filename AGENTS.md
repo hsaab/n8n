@@ -253,6 +253,19 @@ refresh, so you should not need to re-run it manually.
   `packageManager`). Do not `npm install` — a `preinstall` guard
   (`scripts/block-npm-install.js`) blocks it.
 
+### Network egress requirement (non-obvious)
+- `pnpm install` needs outbound access to **`cdn.sheetjs.com`**. `xlsx@0.20.2`
+  is pinned directly to `https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz`
+  in `packages/nodes-base/package.json` and
+  `packages/@n8n/instance-ai/package.json`, and that version is **not** on the
+  npm registry (registry only has up to `0.18.5`), so there is no registry
+  fallback.
+- If install fails with `ECONNRESET` / `Connection reset` on
+  `cdn.sheetjs.com` in a restricted-egress Cloud VM, the domain is not on the
+  allowlist. Ask the user to add `cdn.sheetjs.com` under the agent's Network
+  Access settings, then re-run the update script. All other dependencies
+  resolve from `registry.npmjs.org` and `codeload.github.com`.
+
 ### Update script (startup)
 The startup update script is intentionally minimal and idempotent:
 ```
