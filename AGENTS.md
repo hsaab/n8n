@@ -266,5 +266,22 @@ pnpm install --frozen-lockfile
   Commands" section above (`pnpm build`, `pnpm dev`, `pnpm lint`, `pnpm test`).
 - A first `pnpm build` is required before the CLI can `pnpm start`; `pnpm dev`
   runs watchers across packages. The editor UI is served by Vite on
-  `http://localhost:5173` during `pnpm dev`; the backend/REST API listens on
-  `http://localhost:5678`.
+  `http://localhost:8080` during `pnpm dev` (the `n8n-editor-ui` dev script
+  hardcodes `--port 8080`, proxying the API to the backend); the
+  backend/REST API listens on `http://localhost:5678`. The backend also
+  serves a usable editor directly on `http://localhost:5678` once built.
+- On first `pnpm dev` boot, the Vite editor logs a one-time
+  `Failed to run dependency scan ... @n8n/stores` warning. It is benign — it
+  only skips pre-bundling of that workspace source package, so the editor
+  still loads (just a little slower on first request).
+- **Gotcha: the full `pnpm dev` aborts in this VM.** Its turbo task set
+  includes `@n8n/computer-use#dev`, whose `pnpm start` is the gateway `serve`
+  CLI that requires `url`/`token` args; with none provided it prints usage and
+  exits 1, and turbo tears down the whole `dev` run. For a reliable
+  hot-reload dev loop, run the backend and editor as targeted tasks instead:
+  `pnpm --filter n8n dev` (backend + REST API on `:5678`) and
+  `pnpm --filter n8n-editor-ui dev` (editor on `:8080`). This also avoids the
+  heavy Storybook watcher (`:6006`) that the full `pnpm dev` starts.
+- The backend persists state in `~/.n8n/` (SQLite `database.sqlite`), so an
+  owner account and saved workflows survive dev restarts; `showSetupOnFirstLoad`
+  in `/rest/settings` reflects whether owner setup is still pending.
