@@ -266,5 +266,11 @@ pnpm install --frozen-lockfile
   Commands" section above (`pnpm build`, `pnpm dev`, `pnpm lint`, `pnpm test`).
 - A first `pnpm build` is required before the CLI can `pnpm start`; `pnpm dev`
   runs watchers across packages. The editor UI is served by Vite on
-  `http://localhost:5173` during `pnpm dev`; the backend/REST API listens on
-  `http://localhost:5678`.
+  `http://localhost:8080` during `pnpm dev` (the `n8n-editor-ui` dev script
+  hardcodes `--port 8080`, proxying the API to the backend); the
+  backend/REST API listens on `http://localhost:5678`. The backend also
+  serves a usable editor directly on `http://localhost:5678` once built.
+- On first `pnpm dev` boot, the Vite editor logs a one-time
+  `Failed to run dependency scan ... @n8n/stores` warning. It is benign — it
+  only skips pre-bundling of that workspace source package, so the editor
+  still loads (just a little slower on first request).
