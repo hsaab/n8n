@@ -1,5 +1,9 @@
-import type { InsightsAnalystOverview } from '@n8n/api-types';
-import { insightsAnalystOverviewSchema } from '@n8n/api-types';
+import type {
+	InsightsAnalystChatRequest,
+	InsightsAnalystChatResponse,
+	InsightsAnalystOverview,
+} from '@n8n/api-types';
+import { insightsAnalystChatResponseSchema, insightsAnalystOverviewSchema } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { ControllerRegistryMetadata, type Controller } from '@n8n/decorators';
 import { Container } from '@n8n/di';
@@ -9,6 +13,10 @@ import { DateTime } from 'luxon';
 import { InsightsController } from '../insights.controller';
 import { InsightsAnalystController } from '../insights-analyst.controller';
 import type { InsightsAnalystOverviewService } from '../insights-analyst-overview.service';
+
+type InsightsAnalystChatService = {
+	chat: (request: InsightsAnalystChatRequest) => Promise<InsightsAnalystChatResponse>;
+};
 
 const chartReadyOverview: InsightsAnalystOverview = {
 	summary: {
@@ -68,13 +76,25 @@ const chartReadyOverview: InsightsAnalystOverview = {
 	],
 };
 
-function overviewRoute() {
+const fallbackChatAnswer: InsightsAnalystChatResponse = {
+	answer: 'AP invoice ingestion saved the most time this month.',
+	citations: [
+		{
+			workflowId: 'insights-demo-ap-invoice-ingestion',
+			label: 'AP invoice ingestion',
+			metric: '180 min',
+		},
+	],
+	mode: 'fallback',
+};
+
+function analystRoute(method: 'get' | 'post', path: string) {
 	const registry = Container.get(ControllerRegistryMetadata);
 	const controllerMeta = registry.getControllerMetadata(InsightsAnalystController as Controller);
 
 	for (const [handlerName, route] of controllerMeta.routes.entries()) {
 		const fullPath = `${controllerMeta.basePath}${route.path}`.replaceAll(/\/{2,}/g, '/');
-		if (route.method === 'get' && fullPath === '/insights/analyst/overview') {
+		if (route.method === method && fullPath === path) {
 			return { handlerName, route, basePath: controllerMeta.basePath };
 		}
 	}
@@ -82,14 +102,36 @@ function overviewRoute() {
 	return undefined;
 }
 
+function overviewRoute() {
+	return analystRoute('get', '/insights/analyst/overview');
+}
+
+function chatRoute() {
+	return analystRoute('post', '/insights/analyst/chat');
+}
+
+function createAnalystController(
+	overviewService: InsightsAnalystOverviewService,
+	chatService: InsightsAnalystChatService,
+) {
+	return new (
+		InsightsAnalystController as unknown as new (
+			overview: InsightsAnalystOverviewService,
+			chat: InsightsAnalystChatService,
+		) => InsightsAnalystController
+	)(overviewService, chatService);
+}
+
 describe('InsightsAnalystController', () => {
 	const overviewService = mock<InsightsAnalystOverviewService>();
+	const chatService = mock<InsightsAnalystChatService>();
 	let controller: InsightsAnalystController;
 
 	beforeEach(() => {
 		jest.resetAllMocks();
 		overviewService.getOverview.mockResolvedValue(chartReadyOverview);
-		controller = new InsightsAnalystController(overviewService);
+		chatService.chat.mockResolvedValue(fallbackChatAnswer);
+		controller = createAnalystController(overviewService, chatService);
 	});
 
 	it('exposes GET /insights/analyst/overview on InsightsAnalystController', () => {
@@ -144,5 +186,108 @@ describe('InsightsAnalystController', () => {
 			}),
 		);
 		expect(response).toEqual(chartReadyOverview);
+	});
+
+	it('exposes POST /insights/analyst/chat even when no Anthropic key is set', () => {
+		const found = chatRoute();
+
+		expect(found).toBeDefined();
+		expect(found?.route.method).toBe('post');
+	});
+
+	it('does not add the analyst chat route onto InsightsController', () => {
+		const registry = Container.get(ControllerRegistryMetadata);
+		const production = registry.getControllerMetadata(InsightsController as Controller);
+		const chatPaths = [...production.routes.values()].filter((route) =>
+			`${production.basePath}${route.path}`.includes('analyst/chat'),
+		);
+
+		expect(chatPaths).toEqual([]);
+	});
+
+	it('rejects anonymous callers and users without insights:list on chat', () => {
+		const found = chatRoute();
+		expect(found).toBeDefined();
+
+		expect(found?.route.skipAuth).toBe(false);
+		expect(found?.route.allowUnauthenticated).toBeFalsy();
+		expect(found?.route.accessScope).toEqual({ scope: 'insights:list', globalOnly: true });
+	});
+
+	it('returns a fallback chat answer to an insights:list user without a dashboard license', async () => {
+		const found = chatRoute();
+		expect(found).toBeDefined();
+
+		const handler = (
+			controller as unknown as Record<
+				string,
+				(
+					req: AuthenticatedRequest,
+					res: Response,
+					body: InsightsAnalystChatRequest,
+				) => Promise<InsightsAnalystChatResponse>
+			>
+		)[found!.handlerName];
+
+		const response = await handler.call(
+			controller,
+			mock<AuthenticatedRequest>(),
+			mock<Response>(),
+			{ question: 'Which workflow saved the most time?' },
+		);
+
+		expect(found?.route.licenseFeature).toBeUndefined();
+		expect(chatService.chat).toHaveBeenCalledWith({
+			question: 'Which workflow saved the most time?',
+		});
+		expect(insightsAnalystChatResponseSchema.safeParse(response).success).toBe(true);
+		expect(response.mode).toBe('fallback');
+		expect(response).toEqual(fallbackChatAnswer);
+	});
+
+	it('returns an llm chat answer that only cites real workflow ids', async () => {
+		const found = chatRoute();
+		expect(found).toBeDefined();
+
+		const llmAnswer: InsightsAnalystChatResponse = {
+			answer: 'AP invoice ingestion saved the most time this month.',
+			citations: [
+				{
+					workflowId: 'insights-demo-ap-invoice-ingestion',
+					label: 'AP invoice ingestion',
+					metric: '180 min',
+				},
+			],
+			mode: 'llm',
+		};
+		chatService.chat.mockResolvedValue(llmAnswer);
+
+		const handler = (
+			controller as unknown as Record<
+				string,
+				(
+					req: AuthenticatedRequest,
+					res: Response,
+					body: InsightsAnalystChatRequest,
+				) => Promise<InsightsAnalystChatResponse>
+			>
+		)[found!.handlerName];
+
+		const response = await handler.call(
+			controller,
+			mock<AuthenticatedRequest>(),
+			mock<Response>(),
+			{ question: 'Which workflow saved the most time?' },
+		);
+
+		expect(response.mode).toBe('llm');
+		expect(response.citations.map((citation) => citation.workflowId)).toEqual([
+			'insights-demo-ap-invoice-ingestion',
+		]);
+		expect(
+			response.citations.some(
+				(citation) => citation.workflowId === 'invented-workflow-from-the-model',
+			),
+		).toBe(false);
 	});
 });
