@@ -12,6 +12,7 @@ import { InstanceSettings } from 'n8n-core';
 export class InsightsModule implements ModuleInterface {
 	async init() {
 		await import('./insights.controller');
+		await import('./insights-analyst.controller');
 
 		const { InsightsService } = await import('./insights.service');
 		await Container.get(InsightsService).init();

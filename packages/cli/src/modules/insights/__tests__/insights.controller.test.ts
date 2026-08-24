@@ -1,6 +1,7 @@
 import { LicenseState } from '@n8n/backend-common';
 import { mockInstance, testDb } from '@n8n/backend-test-utils';
 import type { AuthenticatedRequest } from '@n8n/db';
+import { ControllerRegistryMetadata, type Controller } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import { DateTime } from 'luxon';
@@ -914,6 +915,24 @@ describe('InsightsController', () => {
 					),
 				);
 			});
+		});
+	});
+
+	describe('dashboard license metadata', () => {
+		// @Licensed only runs as HTTP middleware. Direct handler calls do not 403.
+		it('requires feat:insights:viewDashboard on GET /insights/by-time and GET /insights/by-workflow', () => {
+			const registry = Container.get(ControllerRegistryMetadata);
+			const byTime = registry.getRouteMetadata(
+				InsightsController as Controller,
+				'getInsightsByTime',
+			);
+			const byWorkflow = registry.getRouteMetadata(
+				InsightsController as Controller,
+				'getInsightsByWorkflow',
+			);
+
+			expect(byTime.licenseFeature).toBe('feat:insights:viewDashboard');
+			expect(byWorkflow.licenseFeature).toBe('feat:insights:viewDashboard');
 		});
 	});
 });
