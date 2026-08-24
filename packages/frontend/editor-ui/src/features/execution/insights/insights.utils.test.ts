@@ -8,6 +8,7 @@ import {
 	transformInsightsValues,
 	transformInsightsDeviation,
 	transformInsightsSummary,
+	formatInsightsTimeSavedLabel,
 	formatDateRange,
 	getMatchingPreset,
 	timeRangeMappings,
@@ -41,6 +42,28 @@ describe('Insights Transformers', () => {
 
 		it('should return 0 for 0 minutes', () => {
 			expect(transformInsightsTimeSaved(0)).toBe(0);
+		});
+	});
+
+	describe('formatInsightsTimeSavedLabel', () => {
+		it('formats time saved under 60 minutes as minutes', () => {
+			const thirtyMinutes = formatInsightsTimeSavedLabel(30);
+			const fiftyNineMinutes = formatInsightsTimeSavedLabel(59);
+
+			expect(thirtyMinutes).toContain('30');
+			expect(thirtyMinutes.toLowerCase()).toMatch(/m/);
+			expect(fiftyNineMinutes).toContain('59');
+			expect(fiftyNineMinutes.toLowerCase()).toMatch(/m/);
+		});
+
+		it('formats time saved of 60 minutes or more as hours', () => {
+			const oneHour = formatInsightsTimeSavedLabel(60);
+			const twoHours = formatInsightsTimeSavedLabel(120);
+
+			expect(oneHour).toContain('1');
+			expect(oneHour.toLowerCase()).toMatch(/h/);
+			expect(twoHours).toContain('2');
+			expect(twoHours.toLowerCase()).toMatch(/h/);
 		});
 	});
 

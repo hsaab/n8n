@@ -16,12 +16,18 @@ import { I18nT } from 'vue-i18n';
 import { useRoute } from 'vue-router';
 import { formatDateRange, getMatchingPreset, getTimeRangeLabels } from '../insights.utils';
 
-const props = defineProps<{
-	summary: InsightsSummaryDisplay;
-	startDate?: DateValue;
-	endDate?: DateValue;
-	loading?: boolean;
-}>();
+const props = withDefaults(
+	defineProps<{
+		summary: InsightsSummaryDisplay;
+		startDate?: DateValue;
+		endDate?: DateValue;
+		loading?: boolean;
+		linkVariant?: 'navigate' | 'static';
+	}>(),
+	{
+		linkVariant: 'navigate',
+	},
+);
 
 const i18n = useI18n();
 const route = useRoute();
@@ -55,6 +61,8 @@ const summaryHasNoData = computed(() => {
 	const summaryValues = Object.values(props.summary);
 	return summaryValues.length > 0 && summaryValues.every((summary) => !summary.value);
 });
+
+const isStatic = computed(() => props.linkVariant === 'static');
 
 const summaryWithRouteLocations = computed(() =>
 	props.summary.map((s) => ({
@@ -110,7 +118,12 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 								</template>
 							</I18nT>
 						</template>
-						<RouterLink :to="to" :exact-active-class="$style.activeTab" @click="trackTabClick(id)">
+						<RouterLink
+							v-if="!isStatic"
+							:to="to"
+							:exact-active-class="$style.activeTab"
+							@click="trackTabClick(id)"
+						>
 							<strong>
 								<N8nTooltip placement="bottom" :disabled="id !== 'timeSaved'">
 									<template #content>
@@ -162,6 +175,58 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 								</small>
 							</span>
 						</RouterLink>
+						<div v-else :class="$style.tile">
+							<strong>
+								<N8nTooltip placement="bottom" :disabled="id !== 'timeSaved'">
+									<template #content>
+										{{ i18n.baseText('insights.banner.title.timeSaved.tooltip') }}
+									</template>
+									{{ summaryTitles[id] }}
+								</N8nTooltip>
+							</strong>
+							<small :class="$style.days">
+								{{ displayDateRangeLabel }}
+							</small>
+							<span v-if="value === 0 && id === 'timeSaved'" :class="$style.empty">
+								<em>--</em>
+								<small>
+									<N8nTooltip placement="bottom">
+										<template #content>
+											<I18nT keypath="insights.banner.timeSaved.tooltip" scope="global">
+												<template #link>{{
+													i18n.baseText('insights.banner.timeSaved.tooltip.link.text')
+												}}</template>
+											</I18nT>
+										</template>
+										<N8nIcon :class="$style.icon" icon="info" size="medium" />
+									</N8nTooltip>
+								</small>
+							</span>
+							<span v-else>
+								<em
+									>{{ smartDecimal(value).toLocaleString('en-US') }} <i>{{ unit }}</i></em
+								>
+								<small v-if="deviation !== null" :class="getImpactStyle(id, deviation)">
+									<N8nIcon
+										:class="[$style.icon, getImpactStyle(id, deviation)]"
+										:icon="
+											deviation === 0
+												? 'chevron-right'
+												: deviation > 0
+													? 'chevron-up'
+													: 'chevron-down'
+										"
+									/>
+									<N8nTooltip placement="bottom" :disabled="id !== 'failureRate'">
+										<template #content>
+											{{ i18n.baseText('insights.banner.failureRate.deviation.tooltip') }}
+										</template>
+										{{ smartDecimal(Math.abs(deviation)).toLocaleString('en-US')
+										}}{{ deviationUnit }}
+									</N8nTooltip>
+								</small>
+							</span>
+						</div>
 					</N8nTooltip>
 				</li>
 			</ul>
@@ -209,7 +274,8 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 			}
 		}
 
-		a {
+		a,
+		.tile {
 			display: grid;
 			align-items: center;
 			align-content: center;
