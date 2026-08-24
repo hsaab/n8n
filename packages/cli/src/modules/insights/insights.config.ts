@@ -90,5 +90,5 @@ export class InsightsConfig {
 	 * Anthropic model id for Insights Analyst chat.
 	 */
 	@Env('N8N_INSIGHTS_ANALYST_MODEL')
-	analystModel: string = 'claude-opus-4-7-20260101';
+	analystModel: string = 'claude-sonnet-4-5-20250929';
 }
