@@ -109,7 +109,7 @@ export class InsightsAnalystOverviewService {
 		return rows
 			.slice()
 			.sort((left, right) => this.timeSavedPerRun(left) - this.timeSavedPerRun(right))
-			.filter((row) => this.timeSavedPerRun(row) < 2)
+			.filter((row) => this.timeSavedPerRun(row) <= 4)
 			.slice(0, 3)
 			.map((row) => ({
 				workflowId: row.workflowId,

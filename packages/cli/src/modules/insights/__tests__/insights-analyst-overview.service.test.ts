@@ -208,6 +208,37 @@ describe('InsightsAnalystOverviewService', () => {
 		expect(insightsService.validateDateFiltersLicense).not.toHaveBeenCalled();
 	});
 
+	it('includes the lowest per-run seeded workflows in lowImpact', async () => {
+		insightsService.getInsightsSummary.mockResolvedValue(populatedSummary);
+		insightsService.getInsightsByWorkflow.mockResolvedValue({
+			count: 2,
+			data: [
+				{
+					...workflowRows.data[0],
+					succeeded: 10,
+					timeSaved: 180,
+				},
+				{
+					...workflowRows.data[1],
+					succeeded: 10,
+					timeSaved: 40,
+				},
+			],
+		});
+		insightsService.getInsightsByTime.mockResolvedValue(thirtyDaySeries);
+
+		const result = await service.getOverview();
+
+		expect(result.lowImpact).toEqual([
+			{
+				workflowId: 'insights-demo-inventory-sync',
+				name: 'Inventory sync',
+				blurb: 'Low time saved per run',
+				timeSavedPerRunLabel: '4 min',
+			},
+		]);
+	});
+
 	it('seeds demo period data on the first overview read after owner setup', async () => {
 		const order: string[] = [];
 		seedService.ensureSeeded.mockImplementation(async () => {
