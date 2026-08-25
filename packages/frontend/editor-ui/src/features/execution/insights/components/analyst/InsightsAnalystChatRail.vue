@@ -12,7 +12,7 @@ const props = defineProps<{
 }>();
 
 const i18n = useI18n();
-const { messages, sending, send } = useInsightsAnalystChat();
+const { messages, sending, send, stop } = useInsightsAnalystChat();
 const draft = ref('');
 
 const suggestedPrompts: Array<{ id: string; labelKey: BaseTextKey }> = [
@@ -40,7 +40,10 @@ async function submit(question: string, suggestedPromptId?: string) {
 	}
 
 	draft.value = '';
-	await send(nextQuestion, suggestedPromptId);
+	const sent = await send(nextQuestion, suggestedPromptId);
+	if (!sent) {
+		draft.value = nextQuestion;
+	}
 }
 
 async function submitDraft() {
@@ -125,6 +128,7 @@ async function submitSuggested(id: string, labelKey: BaseTextKey) {
 				:disabled="sending"
 				:autosize="{ minRows: 2, maxRows: 4 }"
 				@submit="submitDraft"
+				@stop="stop"
 			/>
 		</div>
 	</aside>

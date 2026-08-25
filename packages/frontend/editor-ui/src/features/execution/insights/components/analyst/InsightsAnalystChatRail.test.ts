@@ -35,6 +35,14 @@ vi.mock('@n8n/rest-api-client', async (importOriginal) => {
 	};
 });
 
+const showErrorMock = vi.fn();
+
+vi.mock('@/app/composables/useToast', () => ({
+	useToast: () => ({
+		showError: showErrorMock,
+	}),
+}));
+
 const renderComponent = createComponentRenderer(InsightsAnalystChatRail);
 
 const ranking: InsightsAnalystRankingRow[] = [
@@ -92,6 +100,7 @@ const setupRail = () => {
 describe('InsightsAnalystChatRail', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		showErrorMock.mockReset();
 		vi.mocked(makeRestApiRequest).mockResolvedValue(fallbackChat);
 	});
 
@@ -201,5 +210,55 @@ describe('InsightsAnalystChatRail', () => {
 		const card = screen.getByTestId('insights-analyst-citation');
 		expect(card).toHaveAttribute('data-workflow-id', 'insights-demo-ap-invoice-ingestion');
 		expect(within(card).getByText('AP invoice ingestion')).toBeInTheDocument();
+	});
+
+	it('failed send restores the composer and does not leave an unanswered user bubble', async () => {
+		vi.mocked(makeRestApiRequest).mockRejectedValue(new Error('Network Error'));
+
+		setupRail();
+
+		await userEvent.type(screen.getByRole('textbox'), typedQuestion);
+		await userEvent.click(screen.getByTestId('instance-ai-send-button'));
+
+		await waitFor(() => {
+			expect(screen.queryByTestId('insights-analyst-chat-user-bubble')).not.toBeInTheDocument();
+			expect(screen.getByRole('textbox')).toHaveValue(typedQuestion);
+		});
+
+		expect(showErrorMock).toHaveBeenCalled();
+		expect(screen.queryByTestId('chat-typing-indicator')).not.toBeInTheDocument();
+	});
+
+	it('stop control removes the unanswered question and restores the composer', async () => {
+		vi.mocked(makeRestApiRequest).mockImplementation(async (_ctx, method, path) => {
+			if (path === '/insights/analyst/chat') {
+				return await new Promise<InsightsAnalystChatResponse>(() => {});
+			}
+
+			throw new Error(`Unexpected ${method} ${path}`);
+		});
+
+		setupRail();
+
+		await userEvent.type(screen.getByRole('textbox'), typedQuestion);
+		await userEvent.click(screen.getByTestId('instance-ai-send-button'));
+
+		await waitFor(() => {
+			expect(screen.getByTestId('insights-analyst-chat-user-bubble')).toHaveTextContent(
+				typedQuestion,
+			);
+			expect(screen.getByTestId('instance-ai-stop-button')).toBeInTheDocument();
+		});
+
+		await userEvent.click(screen.getByTestId('instance-ai-stop-button'));
+
+		await waitFor(() => {
+			expect(screen.queryByTestId('insights-analyst-chat-user-bubble')).not.toBeInTheDocument();
+			expect(screen.queryByTestId('chat-typing-indicator')).not.toBeInTheDocument();
+			expect(screen.getByRole('textbox')).toHaveValue(typedQuestion);
+			expect(screen.getByTestId('instance-ai-send-button')).toBeInTheDocument();
+		});
+
+		expect(showErrorMock).not.toHaveBeenCalled();
 	});
 });
