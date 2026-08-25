@@ -227,6 +227,10 @@ describe('InsightsAnalystSeedService', () => {
 		expect(ownershipService.hasInstanceOwner).toHaveBeenCalled();
 		expect(ownershipService.getInstanceOwner).not.toHaveBeenCalled();
 		expect(userRepository.findOneOrFail).not.toHaveBeenCalled();
+		expect(userRepository.findOne).toHaveBeenCalledWith({
+			where: { role: { slug: GLOBAL_OWNER_ROLE.slug } },
+			relations: ['role'],
+		});
 		expect(projectService.createTeamProject).not.toHaveBeenCalled();
 
 		expect(projects).toEqual(
