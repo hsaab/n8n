@@ -1,5 +1,5 @@
-import type { InsightsAnalystChatRequest, InsightsAnalystOverview } from '@n8n/api-types';
-import { InsightsDateFilterDto } from '@n8n/api-types';
+import type { InsightsAnalystOverview } from '@n8n/api-types';
+import { InsightsAnalystChatRequestDto, InsightsDateFilterDto } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Body, Get, GlobalScope, Post, Query, RestController } from '@n8n/decorators';
 
@@ -25,7 +25,11 @@ export class InsightsAnalystController {
 
 	@Post('/chat')
 	@GlobalScope('insights:list')
-	async chat(_req: AuthenticatedRequest, _res: Response, @Body body: InsightsAnalystChatRequest) {
+	async chat(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Body body: InsightsAnalystChatRequestDto,
+	) {
 		return await this.chatService.chat(body);
 	}
 }

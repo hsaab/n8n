@@ -3,7 +3,11 @@ import type {
 	InsightsAnalystChatResponse,
 	InsightsAnalystOverview,
 } from '@n8n/api-types';
-import { insightsAnalystChatResponseSchema, insightsAnalystOverviewSchema } from '@n8n/api-types';
+import {
+	InsightsAnalystChatRequestDto,
+	insightsAnalystChatResponseSchema,
+	insightsAnalystOverviewSchema,
+} from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { ControllerRegistryMetadata, type Controller } from '@n8n/decorators';
 import { Container } from '@n8n/di';
@@ -199,6 +203,33 @@ describe('InsightsAnalystController', () => {
 
 		expect(found).toBeDefined();
 		expect(found?.route.method).toBe('post');
+	});
+
+	it('declares the chat body as a DTO class, so the registry forwards it to the service', () => {
+		const found = chatRoute();
+		expect(found).toBeDefined();
+
+		const bodyIndex = found!.route.args.findIndex((arg) => arg?.type === 'body');
+		expect(bodyIndex).toBeGreaterThan(-1);
+
+		const paramTypes = Reflect.getMetadata(
+			'design:paramtypes',
+			InsightsAnalystController.prototype,
+			found!.handlerName,
+		) as Array<{ safeParse?: unknown } | undefined>;
+
+		/**
+		 * `controller.registry.ts` pushes a body argument only when its declared type
+		 * has `safeParse`. A plain inferred type resolves to Object at runtime, the
+		 * argument is skipped, and the handler is called with an undefined body.
+		 */
+		expect(typeof paramTypes[bodyIndex]?.safeParse).toBe('function');
+	});
+
+	it('rejects a chat body with no question rather than passing it through', () => {
+		const parsed = InsightsAnalystChatRequestDto.safeParse({ suggestedPromptId: 'time-saved' });
+
+		expect(parsed.success).toBe(false);
 	});
 
 	it('does not add the analyst chat route onto InsightsController', () => {

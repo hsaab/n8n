@@ -11,12 +11,17 @@ export const insightsAnalystCitationSchema = z
 	.strict();
 export type InsightsAnalystCitation = z.infer<typeof insightsAnalystCitationSchema>;
 
-export const insightsAnalystChatRequestSchema = z
-	.object({
-		question: z.string(),
-		suggestedPromptId: z.string().optional(),
-	})
-	.strict();
+/**
+ * Shared with `InsightsAnalystChatRequestDto`. The controller registry only forwards
+ * a `@Body` argument whose declared type has `safeParse`, so the route needs the DTO
+ * class while the frontend client keeps using the schema.
+ */
+export const insightsAnalystChatRequestShape = {
+	question: z.string().min(1),
+	suggestedPromptId: z.string().optional(),
+};
+
+export const insightsAnalystChatRequestSchema = z.object(insightsAnalystChatRequestShape).strict();
 export type InsightsAnalystChatRequest = z.infer<typeof insightsAnalystChatRequestSchema>;
 
 export const insightsAnalystChatResponseSchema = z

@@ -72,7 +72,7 @@ const modelAnswer = {
 
 jest.mock('ai', () => ({
 	__esModule: true,
-	generateText: jest.fn(),
+	generateObject: jest.fn(),
 }));
 
 jest.mock('@ai-sdk/anthropic', () => ({
@@ -83,8 +83,8 @@ jest.mock('@ai-sdk/anthropic', () => ({
 const originalAnalystKey = process.env.N8N_INSIGHTS_ANALYST_ANTHROPIC_API_KEY;
 const originalAnalystModel = process.env.N8N_INSIGHTS_ANALYST_MODEL;
 
-function generateTextMock() {
-	return jest.requireMock<{ generateText: jest.Mock }>('ai').generateText;
+function generateObjectMock() {
+	return jest.requireMock<{ generateObject: jest.Mock }>('ai').generateObject;
 }
 
 function createAnthropicMock() {
@@ -180,7 +180,7 @@ describe('InsightsAnalystChatService', () => {
 		jest.clearAllMocks();
 		seedService.ensureSeeded.mockResolvedValue(undefined);
 		overviewService.getOverview.mockResolvedValue(demoOverview);
-		generateTextMock().mockResolvedValue({ text: JSON.stringify(modelAnswer) });
+		generateObjectMock().mockResolvedValue({ object: modelAnswer });
 	});
 
 	async function createService(overrides?: { apiKey?: string; model?: string }) {
@@ -199,13 +199,13 @@ describe('InsightsAnalystChatService', () => {
 		});
 
 		expect(seedService.ensureSeeded).toHaveBeenCalled();
-		expect(generateTextMock()).not.toHaveBeenCalled();
+		expect(generateObjectMock()).not.toHaveBeenCalled();
 		expect(createAnthropicMock()).not.toHaveBeenCalled();
 		expectFallback(response);
 	});
 
 	it('returns a fallback answer when the Anthropic provider call throws', async () => {
-		generateTextMock().mockRejectedValue(new Error('anthropic unavailable'));
+		generateObjectMock().mockRejectedValue(new Error('anthropic unavailable'));
 		const service = await createService({ apiKey: ANTHROPIC_KEY });
 
 		const response = await service.chat({ question: 'Which workflow saved the most time?' });
@@ -216,8 +216,8 @@ describe('InsightsAnalystChatService', () => {
 		expect(JSON.stringify(loggedCalls(logger))).not.toContain(ANTHROPIC_KEY);
 	});
 
-	it('returns a fallback answer when the model returns malformed JSON', async () => {
-		generateTextMock().mockResolvedValue({ text: 'not-json{{{' });
+	it('returns a fallback answer when the model reply does not fit the answer schema', async () => {
+		generateObjectMock().mockRejectedValue(new Error('response did not match schema'));
 		const service = await createService({ apiKey: ANTHROPIC_KEY });
 
 		const response = await service.chat({ question: 'Which workflow saved the most time?' });
@@ -297,7 +297,7 @@ describe('InsightsAnalystChatService', () => {
 		const response = await service.chat({ question: 'Which workflow saved the most time?' });
 
 		expect(seedService.ensureSeeded).toHaveBeenCalled();
-		expect(generateTextMock()).toHaveBeenCalled();
+		expect(generateObjectMock()).toHaveBeenCalled();
 		expect(insightsAnalystChatResponseSchema.safeParse(response).success).toBe(true);
 		expect(response.mode).toBe('llm');
 		expect(response.answer.length).toBeGreaterThan(0);
