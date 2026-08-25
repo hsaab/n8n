@@ -79,4 +79,16 @@ export class InsightsConfig {
 	 */
 	@Env('N8N_INSIGHTS_COMPACTION_BATCH_DELAY_MILLISECONDS')
 	compactionBatchDelayMilliseconds: number = 100;
+
+	/**
+	 * Optional Anthropic key for Insights Analyst chat. Empty means fallback answers.
+	 */
+	@Env('N8N_INSIGHTS_ANALYST_ANTHROPIC_API_KEY')
+	analystAnthropicApiKey: string = '';
+
+	/**
+	 * Anthropic model id for Insights Analyst chat.
+	 */
+	@Env('N8N_INSIGHTS_ANALYST_MODEL')
+	analystModel: string = 'claude-sonnet-4-5-20250929';
 }

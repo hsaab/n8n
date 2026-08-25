@@ -1,0 +1,240 @@
+import type { InsightsAnalystChatResponse, InsightsAnalystOverview } from '@n8n/api-types';
+import { insightsAnalystChatResponseSchema } from '@n8n/api-types';
+import { mockLogger } from '@n8n/backend-test-utils';
+import { mock } from 'jest-mock-extended';
+
+import type { InsightsAnalystOverviewService } from '../insights-analyst-overview.service';
+import type { InsightsAnalystSeedService } from '../insights-analyst-seed.service';
+import { InsightsConfig } from '../insights.config';
+
+const ANTHROPIC_KEY = 'sk-ant-test-key-do-not-log-9f10';
+const REJECTED_OPUS_DEFAULT = 'claude-opus-4-7-20260101';
+const SONNET_DEFAULT = 'claude-sonnet-4-5-20250929';
+
+const REAL_WORKFLOW_ID = 'insights-demo-ap-invoice-ingestion';
+const OTHER_REAL_WORKFLOW_ID = 'insights-demo-inventory-sync';
+const INVENTED_WORKFLOW_ID = 'invented-workflow-from-the-model';
+
+const demoOverview: InsightsAnalystOverview = {
+	summary: {
+		total: { deviation: 10, unit: 'count', value: 30 },
+		failed: { deviation: 6, unit: 'count', value: 10 },
+		failureRate: { deviation: 0.133, unit: 'ratio', value: 0.333 },
+		averageRunTime: { deviation: null, unit: 'millisecond', value: 10 },
+		timeSaved: { deviation: 5, unit: 'minute', value: 180 },
+	},
+	byTime: [],
+	highlights: [
+		{
+			workflowId: REAL_WORKFLOW_ID,
+			title: 'AP invoice ingestion',
+			blurb: 'Saved the most time this month',
+			metric: '180 min',
+		},
+	],
+	ranking: [
+		{
+			rank: 1,
+			workflowId: REAL_WORKFLOW_ID,
+			name: 'AP invoice ingestion',
+			timeSavedLabel: '180 min',
+		},
+	],
+	lowImpact: [
+		{
+			workflowId: OTHER_REAL_WORKFLOW_ID,
+			name: 'Inventory sync',
+			blurb: 'Low time saved per run',
+			timeSavedPerRunLabel: '4 min',
+		},
+	],
+};
+
+const knownWorkflowIds = new Set([REAL_WORKFLOW_ID, OTHER_REAL_WORKFLOW_ID]);
+
+const modelAnswer = {
+	answer: 'AP invoice ingestion saved the most time this month.',
+	citations: [
+		{
+			workflowId: REAL_WORKFLOW_ID,
+			label: 'AP invoice ingestion',
+			metric: '180 min',
+		},
+		{
+			workflowId: INVENTED_WORKFLOW_ID,
+			label: 'Made-up workflow',
+			metric: '99h',
+		},
+	],
+};
+
+jest.mock('ai', () => ({
+	__esModule: true,
+	generateText: jest.fn(),
+}));
+
+jest.mock('@ai-sdk/anthropic', () => ({
+	__esModule: true,
+	createAnthropic: jest.fn(() => jest.fn((modelId: string) => ({ modelId }))),
+}));
+
+const originalAnalystKey = process.env.N8N_INSIGHTS_ANALYST_ANTHROPIC_API_KEY;
+const originalAnalystModel = process.env.N8N_INSIGHTS_ANALYST_MODEL;
+
+function generateTextMock() {
+	return jest.requireMock<{ generateText: jest.Mock }>('ai').generateText;
+}
+
+function createAnthropicMock() {
+	return jest.requireMock<{ createAnthropic: jest.Mock }>('@ai-sdk/anthropic').createAnthropic;
+}
+
+function restoreAnalystEnv() {
+	if (originalAnalystKey === undefined) {
+		delete process.env.N8N_INSIGHTS_ANALYST_ANTHROPIC_API_KEY;
+	} else {
+		process.env.N8N_INSIGHTS_ANALYST_ANTHROPIC_API_KEY = originalAnalystKey;
+	}
+
+	if (originalAnalystModel === undefined) {
+		delete process.env.N8N_INSIGHTS_ANALYST_MODEL;
+	} else {
+		process.env.N8N_INSIGHTS_ANALYST_MODEL = originalAnalystModel;
+	}
+}
+
+function freshInsightsConfig(overrides?: { apiKey?: string; model?: string }) {
+	delete process.env.N8N_INSIGHTS_ANALYST_ANTHROPIC_API_KEY;
+	delete process.env.N8N_INSIGHTS_ANALYST_MODEL;
+
+	if (overrides?.apiKey !== undefined) {
+		process.env.N8N_INSIGHTS_ANALYST_ANTHROPIC_API_KEY = overrides.apiKey;
+	}
+	if (overrides?.model !== undefined) {
+		process.env.N8N_INSIGHTS_ANALYST_MODEL = overrides.model;
+	}
+
+	return new InsightsConfig();
+}
+
+function loggedCalls(logger: ReturnType<typeof mockLogger>) {
+	const scoped = logger.scoped('insights');
+	const methods = ['error', 'warn', 'info', 'debug', 'verbose'] as const;
+
+	return [logger, scoped].flatMap((target) =>
+		methods.flatMap((method) => {
+			const fn = target[method] as unknown as jest.Mock;
+			return fn.mock?.calls ?? [];
+		}),
+	);
+}
+
+function expectFallback(response: InsightsAnalystChatResponse) {
+	expect(insightsAnalystChatResponseSchema.safeParse(response).success).toBe(true);
+	expect(response.mode).toBe('fallback');
+	expect(response.answer.length).toBeGreaterThan(0);
+	expect(response.citations.every((citation) => knownWorkflowIds.has(citation.workflowId))).toBe(
+		true,
+	);
+}
+
+async function loadChatService() {
+	const { InsightsAnalystChatService } = await import('../insights-analyst-chat.service');
+	return InsightsAnalystChatService;
+}
+
+describe('Insights Analyst model default', () => {
+	afterEach(() => {
+		restoreAnalystEnv();
+	});
+
+	it('defaults the Insights Analyst model to claude-sonnet-4-5-20250929', () => {
+		const config = freshInsightsConfig();
+
+		expect(config.analystModel).toBe(SONNET_DEFAULT);
+	});
+
+	it('rejects claude-opus-4-7-20260101 as the Insights Analyst model default', () => {
+		const config = freshInsightsConfig();
+
+		expect(config.analystModel).toEqual(expect.any(String));
+		expect(config.analystModel).not.toBe(REJECTED_OPUS_DEFAULT);
+	});
+});
+
+describe('InsightsAnalystChatService', () => {
+	const seedService = mock<InsightsAnalystSeedService>();
+	const overviewService = mock<InsightsAnalystOverviewService>();
+	const logger = mockLogger();
+
+	afterEach(() => {
+		restoreAnalystEnv();
+	});
+
+	beforeEach(() => {
+		jest.clearAllMocks();
+		seedService.ensureSeeded.mockResolvedValue(undefined);
+		overviewService.getOverview.mockResolvedValue(demoOverview);
+		generateTextMock().mockResolvedValue({ text: JSON.stringify(modelAnswer) });
+	});
+
+	async function createService(overrides?: { apiKey?: string; model?: string }) {
+		const InsightsAnalystChatService = await loadChatService();
+		const config = freshInsightsConfig(overrides);
+
+		return new InsightsAnalystChatService(config, seedService, overviewService, logger);
+	}
+
+	it('returns a fallback answer when no Anthropic key is configured', async () => {
+		const service = await createService();
+
+		const response = await service.chat({
+			question: 'Which workflow saved the most time?',
+			suggestedPromptId: 'time-saved',
+		});
+
+		expect(seedService.ensureSeeded).toHaveBeenCalled();
+		expect(generateTextMock()).not.toHaveBeenCalled();
+		expect(createAnthropicMock()).not.toHaveBeenCalled();
+		expectFallback(response);
+	});
+
+	it('returns a fallback answer when the Anthropic provider call throws', async () => {
+		generateTextMock().mockRejectedValue(new Error('anthropic unavailable'));
+		const service = await createService({ apiKey: ANTHROPIC_KEY });
+
+		const response = await service.chat({ question: 'Which workflow saved the most time?' });
+
+		expect(seedService.ensureSeeded).toHaveBeenCalled();
+		expectFallback(response);
+		expect(loggedCalls(logger).length).toBeGreaterThan(0);
+		expect(JSON.stringify(loggedCalls(logger))).not.toContain(ANTHROPIC_KEY);
+	});
+
+	it('returns a fallback answer when the model returns malformed JSON', async () => {
+		generateTextMock().mockResolvedValue({ text: 'not-json{{{' });
+		const service = await createService({ apiKey: ANTHROPIC_KEY });
+
+		const response = await service.chat({ question: 'Which workflow saved the most time?' });
+
+		expectFallback(response);
+		expect(JSON.stringify(loggedCalls(logger))).not.toContain(ANTHROPIC_KEY);
+	});
+
+	it('returns an llm answer that keeps only real workflow citations', async () => {
+		const service = await createService({ apiKey: ANTHROPIC_KEY });
+
+		const response = await service.chat({ question: 'Which workflow saved the most time?' });
+
+		expect(seedService.ensureSeeded).toHaveBeenCalled();
+		expect(generateTextMock()).toHaveBeenCalled();
+		expect(insightsAnalystChatResponseSchema.safeParse(response).success).toBe(true);
+		expect(response.mode).toBe('llm');
+		expect(response.answer.length).toBeGreaterThan(0);
+		expect(response.citations.map((citation) => citation.workflowId)).toEqual([REAL_WORKFLOW_ID]);
+		expect(
+			response.citations.some((citation) => citation.workflowId === INVENTED_WORKFLOW_ID),
+		).toBe(false);
+		expect(JSON.stringify(loggedCalls(logger))).not.toContain(ANTHROPIC_KEY);
+	});
+});
