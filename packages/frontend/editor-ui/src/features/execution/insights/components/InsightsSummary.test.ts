@@ -203,4 +203,69 @@ describe('InsightsSummary', () => {
 			expect(html()).toMatchSnapshot();
 		});
 	});
+
+	describe('summary tile navigation', () => {
+		const navigatingSummary: InsightsSummaryDisplay = [
+			{ id: 'total', value: 525, deviation: 85, unit: '', deviationUnit: '%' },
+			{ id: 'failed', value: 14, deviation: 3, unit: '', deviationUnit: '%' },
+			{ id: 'failureRate', value: 1.9, deviation: -0.8, unit: '%', deviationUnit: 'pp' },
+			{ id: 'timeSaved', value: 45, deviation: -5, unit: 'm', deviationUnit: 'm' },
+			{ id: 'averageRunTime', value: 2.5, deviation: -0.5, unit: 's', deviationUnit: 's' },
+		];
+
+		const renderSummaryTiles = (props: Record<string, unknown> = {}) =>
+			renderComponent({
+				props: {
+					summary: navigatingSummary,
+					startDate,
+					endDate,
+					...props,
+				},
+				global: {
+					stubs: {
+						RouterLink: {
+							props: ['to'],
+							template:
+								'<a data-test-id="insights-summary-link" :data-route-name="to && to.name" :data-insight-type="to && to.params && to.params.insightType"><slot /></a>',
+						},
+						N8nIcon: true,
+					},
+				},
+			});
+
+		it('production Insights summary tiles still navigate to each insight type', () => {
+			const { getAllByTestId } = renderSummaryTiles();
+			const links = getAllByTestId('insights-summary-link');
+
+			expect(links.map((link) => link.getAttribute('data-route-name'))).toEqual([
+				'Insights',
+				'Insights',
+				'Insights',
+				'Insights',
+				'Insights',
+			]);
+			expect(links.map((link) => link.getAttribute('data-insight-type'))).toEqual([
+				'total',
+				'failed',
+				'failureRate',
+				'timeSaved',
+				'averageRunTime',
+			]);
+		});
+
+		it('a static-mode summary shows the same numbers without changing the route', () => {
+			const { getByTestId, queryAllByTestId, container } = renderSummaryTiles({
+				linkVariant: 'static',
+			});
+
+			expect(getByTestId('insights-summary-tab-total')).toHaveTextContent('525');
+			expect(getByTestId('insights-summary-tab-failed')).toHaveTextContent('14');
+			expect(getByTestId('insights-summary-tab-failureRate')).toHaveTextContent('1.9');
+			expect(getByTestId('insights-summary-tab-timeSaved')).toHaveTextContent('45');
+			expect(getByTestId('insights-summary-tab-averageRunTime')).toHaveTextContent('2.5');
+
+			expect(queryAllByTestId('insights-summary-link')).toHaveLength(0);
+			expect(container.querySelector('a[href*="insights"]')).toBeNull();
+		});
+	});
 });

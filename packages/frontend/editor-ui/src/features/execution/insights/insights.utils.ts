@@ -3,6 +3,7 @@ import {
 	INSIGHTS_SUMMARY_ORDER,
 	INSIGHTS_UNIT_MAPPING,
 } from '@/features/execution/insights/insights.constants';
+import { smartDecimal } from '@n8n/utils/number/smartDecimal';
 import type { InsightsSummaryDisplay } from '@/features/execution/insights/insights.types';
 import type { DateValue } from '@internationalized/date';
 import { getLocalTimeZone, isToday, now, toCalendarDateTime, today } from '@internationalized/date';
@@ -16,6 +17,9 @@ const DATE_FORMAT_DAY_MONTH = 'd mmm';
 
 export const transformInsightsTimeSaved = (minutes: number): number =>
 	Math.round(minutes / (Math.abs(minutes) < 60 ? 1 : 60)); // we want to show saved time in minutes or hours
+
+export const formatInsightsTimeSavedLabel = (minutes: number): string =>
+	`${smartDecimal(transformInsightsTimeSaved(minutes))}${INSIGHTS_UNIT_MAPPING.timeSaved(minutes)}`;
 export const transformInsightsAverageRunTime = (ms: number): number => ms / 1000; // we want to show average run time in seconds
 export const transformInsightsFailureRate = (value: number): number => value * 100; // we want to show failure rate in percentage
 

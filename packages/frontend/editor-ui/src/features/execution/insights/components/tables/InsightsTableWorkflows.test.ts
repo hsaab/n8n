@@ -218,6 +218,39 @@ describe('InsightsTableWorkflows', () => {
 				const row1 = screen.getByTestId('workflow-row-workflow-1');
 				expect(row1).toBeInTheDocument();
 			});
+
+			it('shows time saved with the shared minutes-or-hours label', async () => {
+				const { formatInsightsTimeSavedLabel } = await import(
+					'@/features/execution/insights/insights.utils'
+				);
+
+				const mixedTimeSavedData = {
+					...mockInsightsData,
+					data: [
+						{ ...mockInsightsData.data[0], timeSaved: 45 },
+						{ ...mockInsightsData.data[1], timeSaved: 120 },
+					],
+				};
+
+				renderComponent({
+					props: {
+						data: mixedTimeSavedData,
+						loading: false,
+						isDashboardEnabled: true,
+					},
+				});
+
+				expect(
+					within(screen.getByTestId('workflow-row-workflow-1')).getByText(
+						formatInsightsTimeSavedLabel(45),
+					),
+				).toBeInTheDocument();
+				expect(
+					within(screen.getByTestId('workflow-row-workflow-2')).getByText(
+						formatInsightsTimeSavedLabel(120),
+					),
+				).toBeInTheDocument();
+			});
 		});
 
 		describe('projectName slot', () => {

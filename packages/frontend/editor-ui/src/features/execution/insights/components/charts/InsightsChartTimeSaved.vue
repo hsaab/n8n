@@ -4,12 +4,12 @@ import {
 	generateLinearGradient,
 	generateLineChartOptions,
 } from '@/features/execution/insights/chartjs.utils';
-import { transformInsightsTimeSaved } from '@/features/execution/insights/insights.utils';
-
 import {
-	GRANULARITY_DATE_FORMAT_MASK,
-	INSIGHTS_UNIT_MAPPING,
-} from '@/features/execution/insights/insights.constants';
+	formatInsightsTimeSavedLabel,
+	transformInsightsTimeSaved,
+} from '@/features/execution/insights/insights.utils';
+
+import { GRANULARITY_DATE_FORMAT_MASK } from '@/features/execution/insights/insights.constants';
 import { type ChartData, Filler, type ScriptableContext } from 'chart.js';
 import { computed } from 'vue';
 import { Line } from 'vue-chartjs';
@@ -27,7 +27,7 @@ const chartOptions = computed(() =>
 					label: (context) => {
 						const label = context.dataset.label ?? '';
 						const value = Number(context.parsed.y);
-						return `${label} ${transformInsightsTimeSaved(value).toLocaleString('en-US')}${INSIGHTS_UNIT_MAPPING[props.type](value)}`;
+						return `${label} ${formatInsightsTimeSavedLabel(value)}`;
 					},
 				},
 			},
