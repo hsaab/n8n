@@ -1,10 +1,14 @@
 import { getLocalTimeZone, today } from '@internationalized/date';
-import type { FrontendModuleSettings, InsightsAnalystOverview } from '@n8n/api-types';
+import type {
+	FrontendModuleSettings,
+	InsightsAnalystChatResponse,
+	InsightsAnalystOverview,
+} from '@n8n/api-types';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import { createTestingPinia } from '@pinia/testing';
 import { screen, waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
-import { reactive } from 'vue';
+import { reactive, ref } from 'vue';
 
 import { defaultSettings } from '@/__tests__/defaults';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -42,6 +46,21 @@ vi.mock('vue-chartjs', () => ({
 		template: '<div>Line</div>',
 	},
 }));
+
+vi.mock('@vueuse/core', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@vueuse/core')>();
+	return {
+		...actual,
+		useSpeechRecognition: () => ({
+			isSupported: ref(false),
+			isListening: ref(false),
+			result: ref(''),
+			isFinal: ref(false),
+			start: vi.fn(),
+			stop: vi.fn(),
+		}),
+	};
+});
 
 vi.mock('@/features/execution/insights/components/InsightsDashboard.vue', () => ({
 	default: {
@@ -188,15 +207,42 @@ const weekRange = () => {
 	};
 };
 
+const fallbackChat: InsightsAnalystChatResponse = {
+	answer: 'AP invoice ingestion saved the most time this month.',
+	citations: [
+		{
+			workflowId: 'insights-demo-ap-invoice-ingestion',
+			label: 'AP invoice ingestion',
+			metric: '3h',
+		},
+	],
+	mode: 'fallback',
+};
+
 const overviewRequests = () =>
 	vi
 		.mocked(makeRestApiRequest)
 		.mock.calls.filter((call) => call[2] === '/insights/analyst/overview');
 
+const chatRequests = () =>
+	vi.mocked(makeRestApiRequest).mock.calls.filter((call) => call[2] === '/insights/analyst/chat');
+
 const licensedInsightsRequests = () =>
 	vi
 		.mocked(makeRestApiRequest)
 		.mock.calls.filter((call) => LICENSED_INSIGHTS_PATHS.has(String(call[2])));
+
+const mockAnalystRequests = (chat: InsightsAnalystChatResponse = fallbackChat) => {
+	vi.mocked(makeRestApiRequest).mockImplementation(async (_ctx, method, path) => {
+		if (path === '/insights/analyst/overview') {
+			return mockOverview;
+		}
+		if (path === '/insights/analyst/chat') {
+			return chat;
+		}
+		throw new Error(`Unexpected ${method} ${path}`);
+	});
+};
 
 const openDatePicker = async (getByRole: (role: string, options?: object) => HTMLElement) => {
 	const trigger = getByRole('button', { name: formatDateRange(thirtyDayRange()) });
@@ -370,6 +416,65 @@ describe('InsightsAnalystView', () => {
 		expect(overviewRequests()).toHaveLength(1);
 		expect(overviewRequests()[0]?.[1]).toBe('GET');
 		expect(overviewRequests()[0]?.[2]).toBe('/insights/analyst/overview');
+		expectNoLicensedInsightsTraffic();
+	});
+
+	it('right rail sits beside the dashboard and stacks under it on a narrow layout', async () => {
+		renderComponent();
+
+		await waitFor(() => {
+			expect(screen.getByTestId('insights-chart-total')).toBeInTheDocument();
+		});
+
+		const layout = screen.getByTestId('insights-analyst-layout');
+		const dashboard = screen.getByTestId('insights-analyst-dashboard');
+		const rail = screen.getByTestId('insights-analyst-chat-rail');
+
+		expect(layout).toContainElement(dashboard);
+		expect(layout).toContainElement(rail);
+		expect(
+			Boolean(dashboard.compareDocumentPosition(rail) & Node.DOCUMENT_POSITION_FOLLOWING),
+		).toBe(true);
+	});
+
+	it('pill submit on the analyst page shows a user bubble then an answer', async () => {
+		mockAnalystRequests();
+		renderComponent();
+
+		await waitFor(() => {
+			expect(screen.getByTestId('insights-chart-total')).toBeInTheDocument();
+		});
+
+		expect(screen.getByTestId('insights-analyst-chat-rail')).toBeInTheDocument();
+
+		await userEvent.click(screen.getByTestId('insights-analyst-suggested-prompt-time-saved'));
+
+		await waitFor(() => {
+			expect(screen.getByTestId('insights-analyst-chat-user-bubble')).toBeInTheDocument();
+			expect(screen.getByText(fallbackChat.answer)).toBeInTheDocument();
+		});
+
+		expect(chatRequests()).toHaveLength(1);
+		expect(chatRequests()[0]?.[1]).toBe('POST');
+		expect(chatRequests()[0]?.[2]).toBe('/insights/analyst/chat');
+		expect(chatRequests()[0]?.[3]).toEqual(
+			expect.objectContaining({
+				question: expect.any(String),
+				suggestedPromptId: 'time-saved',
+			}),
+		);
+		expectNoLicensedInsightsTraffic();
+	});
+
+	it('chat rail lives only on InsightsAnalystView so unauthenticated users never reach it', async () => {
+		renderComponent();
+
+		await waitFor(() => {
+			expect(screen.getByTestId('insights-chart-total')).toBeInTheDocument();
+		});
+
+		expect(screen.getByTestId('insights-analyst-chat-rail')).toBeInTheDocument();
+		expect(screen.queryByTestId('licensed-insights-dashboard')).not.toBeInTheDocument();
 		expectNoLicensedInsightsTraffic();
 	});
 });
