@@ -133,7 +133,7 @@ export class InsightsAnalystSeedService {
 				where: { id: Like(`${INSIGHTS_DEMO_WORKFLOW_ID_PREFIX}%`) },
 			})) ?? [];
 		const existingIds = new Set(existing.map((workflow) => workflow.id));
-		const catalogIds = new Set(INSIGHTS_DEMO_WORKFLOW_IDS);
+		const catalogIds = new Set<string>(INSIGHTS_DEMO_WORKFLOW_IDS);
 
 		for (const workflow of existing) {
 			if (!catalogIds.has(workflow.id)) {
