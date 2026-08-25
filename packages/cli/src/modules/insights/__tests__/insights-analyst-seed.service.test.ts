@@ -387,8 +387,13 @@ describe('InsightsAnalystSeedService', () => {
 		const firstPeriodDays = uniquePeriodDays().size;
 		const firstPeriodTypes = new Set(periodRows.map((row) => periodTypeOf(row)));
 
+		const periodSavesAfterFirst = insightsByPeriodRepository.save.mock.calls.length;
+
 		await seeder.ensureSeeded();
 
+		// A second call must not rewrite the dataset. Every overview and chat request
+		// calls this, and re-seeding would also revert an operator's edits.
+		expect(insightsByPeriodRepository.save.mock.calls.length).toBe(periodSavesAfterFirst);
 		expect(projects.filter((project) => project.id === DEMO_PROJECT_ID)).toHaveLength(1);
 		expect([...new Set(createdWorkflowIds())].sort()).toEqual(firstWorkflowIds);
 		expect(new Set(createdWorkflowIds()).size).toBe(8);
@@ -450,6 +455,23 @@ describe('InsightsAnalystSeedService', () => {
 		expect(insightsByPeriodRepository.save).not.toHaveBeenCalled();
 	});
 
+	it('seeds on a later request when the first attempt ran before owner setup', async () => {
+		const seeder = buildSeeder();
+		ownershipService.hasInstanceOwner.mockResolvedValue(false);
+		userRepository.findOne.mockResolvedValue(null);
+
+		await seeder.ensureSeeded();
+		expect(insightsByPeriodRepository.save).not.toHaveBeenCalled();
+
+		ownershipService.hasInstanceOwner.mockResolvedValue(true);
+		userRepository.findOne.mockResolvedValue(owner);
+
+		await seeder.ensureSeeded();
+
+		expect(insightsByPeriodRepository.save).toHaveBeenCalled();
+		expect(new Set(createdWorkflowIds()).size).toBe(8);
+	});
+
 	it('ships the eight demo workflows the analyst design expects', () => {
 		const catalog = INSIGHTS_DEMO_WORKFLOWS.map((spec) => ({
 			id: spec.id,
@@ -501,6 +523,12 @@ describe('InsightsAnalystSeedService', () => {
 		expect(worstFirst[0]?.[0]).toBe(MOST_FAILURES_WORKFLOW_ID);
 		expect(worstFirst[0]?.[1]).toBeGreaterThan(0);
 		expect(failureTotals.get(NEVER_FAILING_WORKFLOW_ID)).toBe(0);
+
+		// The day-to-day variation has to average out, or the "needs attention" count
+		// on the page reads higher than the rate the catalog declares.
+		for (const spec of INSIGHTS_DEMO_WORKFLOWS) {
+			expect(failureTotals.get(spec.id)).toBe(spec.dailyFailures * INSIGHTS_DEMO_SEED_DAYS);
+		}
 	});
 
 	it('seed works when getMaxTeamProjects is 0', async () => {

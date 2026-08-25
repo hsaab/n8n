@@ -192,7 +192,7 @@ $rail-height: 576px;
 	padding: var(--spacing--sm);
 	border: var(--border);
 	border-radius: var(--radius--lg);
-	background: var(--color--background);
+	background: var(--background--subtle);
 }
 
 .composer {

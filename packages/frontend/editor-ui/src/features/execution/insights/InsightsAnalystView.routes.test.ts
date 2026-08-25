@@ -71,7 +71,10 @@ describe('Insights analyst routes', () => {
 		expect(JSON.stringify({ meta: parent.meta, childMeta: analystChild?.meta })).not.toMatch(
 			/N8N_DEMO|demoFeature|DEMO_INSIGHTS/i,
 		);
-		expect(analystChild?.name).toBe(VIEWS.INSIGHTS_ANALYST);
+		// Compared against the literal rather than the constant, so renaming the
+		// constant fails here instead of quietly agreeing with itself.
+		expect(analystChild?.name).toBe('InsightsAnalyst');
+		expect(VIEWS.INSIGHTS_ANALYST).toBe('InsightsAnalyst');
 	});
 
 	it('/insights/analyst is registered before :insightType? and is not captured as insightType', async () => {

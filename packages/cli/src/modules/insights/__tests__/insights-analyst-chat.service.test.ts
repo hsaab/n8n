@@ -291,6 +291,30 @@ describe('InsightsAnalystChatService', () => {
 		expectFallback(response);
 	});
 
+	it('never cites the attention card, whose metric counts failures rather than minutes', async () => {
+		overviewService.getOverview.mockResolvedValue({
+			...demoOverview,
+			ranking: [],
+			highlights: [
+				{
+					workflowId: OTHER_REAL_WORKFLOW_ID,
+					kind: 'attention',
+					workflowName: 'Delayed shipment triage',
+					blurb: 'Chases carriers when a shipment misses its promised window.',
+					metricValue: 60,
+				},
+			],
+		});
+		const service = await createService();
+
+		const response = await service.chat({ question: 'Which workflow saved the most time?' });
+
+		// 60 failures formatted as time would read "1 hr saved" on the rail.
+		expect(response.citations).toEqual([]);
+		expect(response.answer).not.toContain('Delayed shipment triage');
+		expectFallback(response);
+	});
+
 	it('returns an llm answer that keeps only real workflow citations', async () => {
 		const service = await createService({ apiKey: ANTHROPIC_KEY });
 

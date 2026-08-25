@@ -76,16 +76,25 @@ export class InsightsAnalystOverviewService {
 		};
 	}
 
+	/**
+	 * Ties fall back to workflow id. Without that the order of two equal rows comes
+	 * from whatever the Insights query happened to return, so the same instance could
+	 * rank them differently between two loads.
+	 */
 	private demoWorkflows(rows: InsightsByWorkflow['data']): DemoWorkflowRow[] {
 		return rows
 			.filter((row): row is DemoWorkflowRow => typeof row.workflowId === 'string')
 			.slice()
-			.sort((left, right) => right.timeSaved - left.timeSaved);
+			.sort(
+				(left, right) =>
+					right.timeSaved - left.timeSaved || left.workflowId.localeCompare(right.workflowId),
+			);
 	}
 
 	/**
-	 * Always the same three cards, in the same order, so the page never reflows:
-	 * the biggest total saving, the thinnest saving per run, and the most failures.
+	 * The biggest total saving, the thinnest saving per run, and the most failures,
+	 * always in that order. A card is omitted only when no workflow qualifies, which
+	 * the seeded catalog never does.
 	 */
 	private buildHighlights(rows: DemoWorkflowRow[]): InsightsAnalystHighlight[] {
 		const byTimeSaved = this.pick(rows, (row) => row.timeSaved, 'max');
@@ -123,7 +132,11 @@ export class InsightsAnalystOverviewService {
 	 */
 	private buildLowImpact(rows: DemoWorkflowRow[]): InsightsAnalystLowImpact[] {
 		return this.rowsWithRuns(rows)
-			.sort((left, right) => this.timeSavedPerRun(left) - this.timeSavedPerRun(right))
+			.sort(
+				(left, right) =>
+					this.timeSavedPerRun(left) - this.timeSavedPerRun(right) ||
+					left.workflowId.localeCompare(right.workflowId),
+			)
 			.slice(0, 3)
 			.map((row) => ({
 				workflowId: row.workflowId,

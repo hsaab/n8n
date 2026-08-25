@@ -5291,7 +5291,6 @@
 	"insights.analyst.subheading": "Demo-ready operational insights with seeded workflows, executions, and analyst answers.",
 	"insights.analyst.openWorkflow": "Open workflow",
 	"insights.analyst.perRun": "{value}/run",
-	"insights.analyst.highlights.title": "Highlights",
 	"insights.analyst.highlights.impact": "Highest automation impact",
 	"insights.analyst.highlights.efficiency": "Lowest time saved per run",
 	"insights.analyst.highlights.attention": "Needs attention",

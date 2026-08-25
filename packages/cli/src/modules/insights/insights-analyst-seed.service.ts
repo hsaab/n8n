@@ -45,6 +45,8 @@ const MANUAL_TRIGGER_NODE = {
 export class InsightsAnalystSeedService {
 	private inFlight: Promise<void> | undefined;
 
+	private seeded = false;
+
 	constructor(
 		private readonly ownershipService: OwnershipService,
 		private readonly userRepository: UserRepository,
@@ -60,7 +62,17 @@ export class InsightsAnalystSeedService {
 		this.logger = this.logger.scoped('insights');
 	}
 
+	/**
+	 * `seeded` is set only once the workspace is actually written. Without it every
+	 * overview and chat request deleted and rewrote all 1200 demo rows, which also
+	 * reverted any edit an operator made to a demo workflow. It stays false when the
+	 * instance has no owner yet, so a request after setup completes still seeds.
+	 */
 	async ensureSeeded() {
+		if (this.seeded) {
+			return;
+		}
+
 		this.inFlight ??= this.seedDemoWorkspace();
 		try {
 			await this.inFlight;
@@ -86,6 +98,8 @@ export class InsightsAnalystSeedService {
 		await this.ensureDemoProject(owner);
 		await this.ensureDemoWorkflows(owner);
 		await this.rewriteOwnedInsights();
+
+		this.seeded = true;
 	}
 
 	/**
@@ -298,10 +312,15 @@ export class InsightsAnalystSeedService {
 		const swing = Math.round(spec.dailyExecutions / 3);
 		const wave = ((workflowIndex * 3 + dayOffset) % 5) - 2;
 		const success = Math.max(1, spec.dailyExecutions + Math.round((wave * swing) / 2));
-		const failure = Math.max(
-			0,
-			spec.dailyFailures === 0 ? 0 : spec.dailyFailures + ((workflowIndex + dayOffset) % 2),
-		);
+		/**
+		 * Alternating plus and minus one rather than plus one on every other day, which
+		 * added half a failure per day and pushed the 30-day totals 50 percent above the
+		 * rate the catalog declares.
+		 */
+		const failure =
+			spec.dailyFailures === 0
+				? 0
+				: Math.max(0, spec.dailyFailures + ((workflowIndex + dayOffset) % 2 === 0 ? 1 : -1));
 
 		return {
 			success,

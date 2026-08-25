@@ -93,6 +93,23 @@ describe('InsightsAnalystRanking', () => {
 		expect(getAllByText('insights.analyst.ranking.trend')).toHaveLength(ranking.length);
 	});
 
+	it('ranks only the top five when the API returns every demo workflow', () => {
+		const everyWorkflow: InsightsAnalystRankingRow[] = Array.from({ length: 8 }, (_, index) => ({
+			rank: index + 1,
+			workflowId: `insights-demo-workflow-${index + 1}`,
+			name: `Workflow ${index + 1}`,
+			department: 'Operations',
+			timeSavedMinutes: 600 - index * 60,
+		}));
+
+		const { getByTestId } = renderComponent({ props: { ranking: everyWorkflow } });
+
+		const section = getByTestId('insights-analyst-ranking');
+		expect(section.querySelectorAll('li')).toHaveLength(5);
+		expect(section).toHaveTextContent('Workflow 5');
+		expect(section).not.toHaveTextContent('Workflow 6');
+	});
+
 	it('shows the owning department beside the workflow name', () => {
 		const { getByText } = renderComponent({ props: { ranking } });
 

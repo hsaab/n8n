@@ -97,7 +97,7 @@ const metricLabel = (highlight: InsightsAnalystHighlight) => {
 }
 
 .efficiency {
-	color: var(--color--text--tint-1);
+	color: var(--text-color--subtler);
 }
 
 .attention {
