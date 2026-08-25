@@ -3,7 +3,11 @@ import type {
 	InsightsAnalystChatResponse,
 	InsightsAnalystOverview,
 } from '@n8n/api-types';
-import { insightsAnalystChatResponseSchema, insightsAnalystOverviewSchema } from '@n8n/api-types';
+import {
+	InsightsAnalystChatRequestDto,
+	insightsAnalystChatResponseSchema,
+	insightsAnalystOverviewSchema,
+} from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { ControllerRegistryMetadata, type Controller } from '@n8n/decorators';
 import { Container } from '@n8n/di';
@@ -193,6 +197,17 @@ describe('InsightsAnalystController', () => {
 
 		expect(found).toBeDefined();
 		expect(found?.route.method).toBe('post');
+	});
+
+	it('binds the chat body through a DTO with safeParse', () => {
+		const paramTypes = Reflect.getMetadata(
+			'design:paramtypes',
+			InsightsAnalystController.prototype,
+			'chat',
+		) as Array<{ safeParse?: unknown }> | undefined;
+
+		expect(paramTypes?.[2]).toBe(InsightsAnalystChatRequestDto);
+		expect(typeof paramTypes?.[2]?.safeParse).toBe('function');
 	});
 
 	it('does not add the analyst chat route onto InsightsController', () => {

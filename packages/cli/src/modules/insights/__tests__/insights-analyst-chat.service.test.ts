@@ -227,7 +227,12 @@ describe('InsightsAnalystChatService', () => {
 		const response = await service.chat({ question: 'Which workflow saved the most time?' });
 
 		expect(seedService.ensureSeeded).toHaveBeenCalled();
-		expect(generateTextMock()).toHaveBeenCalled();
+		expect(generateTextMock()).toHaveBeenCalledWith(
+			expect.objectContaining({
+				timeout: expect.any(Number),
+			}),
+		);
+		expect(generateTextMock().mock.calls[0][0].timeout).toBeGreaterThan(0);
 		expect(insightsAnalystChatResponseSchema.safeParse(response).success).toBe(true);
 		expect(response.mode).toBe('llm');
 		expect(response.answer.length).toBeGreaterThan(0);

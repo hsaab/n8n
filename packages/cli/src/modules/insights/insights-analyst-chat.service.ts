@@ -13,6 +13,8 @@ import { InsightsAnalystOverviewService } from './insights-analyst-overview.serv
 import { InsightsAnalystSeedService } from './insights-analyst-seed.service';
 import { InsightsConfig } from './insights.config';
 
+const ANALYST_CHAT_TIMEOUT_MS = 30_000;
+
 const modelPayloadSchema = z.object({
 	answer: z.string().min(1),
 	citations: z.array(insightsAnalystCitationSchema),
@@ -60,6 +62,7 @@ export class InsightsAnalystChatService {
 		const result = await generateText({
 			model: provider(this.modelId()),
 			prompt: this.buildPrompt(request, overview),
+			timeout: ANALYST_CHAT_TIMEOUT_MS,
 		});
 
 		const parsed = this.parseModelText(result.text);
