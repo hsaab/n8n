@@ -24,9 +24,23 @@ export const insightsAnalystChatRequestShape = {
 export const insightsAnalystChatRequestSchema = z.object(insightsAnalystChatRequestShape).strict();
 export type InsightsAnalystChatRequest = z.infer<typeof insightsAnalystChatRequestSchema>;
 
+export const insightsAnalystRecommendationSchema = z
+	.object({
+		action: z.string().min(1),
+		detail: z.string().optional(),
+	})
+	.strict();
+export type InsightsAnalystRecommendation = z.infer<typeof insightsAnalystRecommendationSchema>;
+
+/**
+ * Three blocks the rail can render without parsing markdown. The next step
+ * lives on `recommendation` so it cannot disappear into a prose paragraph.
+ */
 export const insightsAnalystChatResponseSchema = z
 	.object({
-		answer: z.string(),
+		finding: z.string().min(1),
+		evidence: z.array(z.string()),
+		recommendation: insightsAnalystRecommendationSchema,
 		citations: z.array(insightsAnalystCitationSchema),
 		mode: z.enum(['llm', 'fallback']),
 	})

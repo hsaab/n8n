@@ -83,7 +83,12 @@ const chartReadyOverview: InsightsAnalystOverview = {
 };
 
 const fallbackChatAnswer: InsightsAnalystChatResponse = {
-	answer: 'AP invoice ingestion saved the most time this month.',
+	finding: 'AP invoice ingestion saved the most time this month.',
+	evidence: ['AP invoice ingestion saved 135 hr.'],
+	recommendation: {
+		action: 'Open AP invoice ingestion to see where the time is saved.',
+		detail: 'Compare it with the rest of the ranking for a broader ops view.',
+	},
 	citations: [
 		{
 			workflowId: 'insights-demo-ap-invoice-ingestion',
@@ -287,7 +292,11 @@ describe('InsightsAnalystController', () => {
 		expect(found).toBeDefined();
 
 		const llmAnswer: InsightsAnalystChatResponse = {
-			answer: 'AP invoice ingestion saved the most time this month.',
+			finding: 'AP invoice ingestion saved the most time this month.',
+			evidence: ['AP invoice ingestion saved 135 hr.'],
+			recommendation: {
+				action: 'Open AP invoice ingestion to see where the time is saved.',
+			},
 			citations: [
 				{
 					workflowId: 'insights-demo-ap-invoice-ingestion',

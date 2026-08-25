@@ -1,20 +1,22 @@
 import type {
 	InsightsAnalystChatRequest,
 	InsightsAnalystChatResponse,
-	InsightsAnalystCitation,
 	InsightsAnalystOverview,
 } from '@n8n/api-types';
-import { insightsAnalystCitationSchema } from '@n8n/api-types';
+import { insightsAnalystCitationSchema, insightsAnalystRecommendationSchema } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { z } from 'zod';
 
+import { buildAnalystChatPrompt, fallbackAnalystChat } from './insights-analyst-chat.format';
 import { InsightsAnalystOverviewService } from './insights-analyst-overview.service';
 import { InsightsAnalystSeedService } from './insights-analyst-seed.service';
 import { InsightsConfig } from './insights.config';
 
 const modelPayloadSchema = z.object({
-	answer: z.string().min(1),
+	finding: z.string().min(1),
+	evidence: z.array(z.string().min(1)).min(1).max(5),
+	recommendation: insightsAnalystRecommendationSchema,
 	citations: z.array(insightsAnalystCitationSchema),
 });
 
@@ -33,7 +35,9 @@ export class InsightsAnalystChatService {
 		const knownWorkflowIds = this.knownWorkflowIds(overview);
 
 		if (!this.apiKey()) {
-			return this.fallbackAnswer(overview, knownWorkflowIds);
+			return fallbackAnalystChat(request, overview, knownWorkflowIds, (minutes) =>
+				this.timeSavedLabel(minutes),
+			);
 		}
 
 		try {
@@ -46,7 +50,9 @@ export class InsightsAnalystChatService {
 					error instanceof Error ? error.message : String(error)
 				}`,
 			);
-			return this.fallbackAnswer(overview, knownWorkflowIds);
+			return fallbackAnalystChat(request, overview, knownWorkflowIds, (minutes) =>
+				this.timeSavedLabel(minutes),
+			);
 		}
 	}
 
@@ -69,7 +75,7 @@ export class InsightsAnalystChatService {
 		const result = await generateObject({
 			model: provider(this.modelId()),
 			schema: modelPayloadSchema,
-			prompt: this.buildPrompt(request, overview),
+			prompt: buildAnalystChatPrompt(request, overview),
 		});
 
 		const citations = result.object.citations.filter((citation) =>
@@ -82,7 +88,9 @@ export class InsightsAnalystChatService {
 		});
 
 		return {
-			answer: result.object.answer,
+			finding: result.object.finding,
+			evidence: result.object.evidence,
+			recommendation: result.object.recommendation,
 			citations,
 			mode: 'llm',
 		};
@@ -106,44 +114,6 @@ export class InsightsAnalystChatService {
 		);
 	}
 
-	private fallbackAnswer(
-		overview: InsightsAnalystOverview,
-		knownWorkflowIds: Set<string>,
-	): InsightsAnalystChatResponse {
-		const top = overview.ranking[0];
-		/**
-		 * Only the impact card can be cited here. Its metricValue is minutes saved,
-		 * while the attention card's is a failure count that must never be read as time.
-		 */
-		const impact = overview.highlights.find((row) => row.kind === 'impact');
-		const citations: InsightsAnalystCitation[] = [];
-
-		if (top && knownWorkflowIds.has(top.workflowId)) {
-			citations.push({
-				workflowId: top.workflowId,
-				label: top.name,
-				metric: this.timeSavedLabel(top.timeSavedMinutes),
-			});
-		} else if (impact && knownWorkflowIds.has(impact.workflowId)) {
-			citations.push({
-				workflowId: impact.workflowId,
-				label: impact.workflowName,
-				metric: this.timeSavedLabel(impact.metricValue),
-			});
-		}
-
-		const lead = citations[0];
-		const answer = lead
-			? `${lead.label} saved the most time this period.`
-			: 'No demo workflow data is available yet.';
-
-		return {
-			answer,
-			citations,
-			mode: 'fallback',
-		};
-	}
-
 	/**
 	 * Mirrors `transformInsightsTimeSaved` in the editor so a citation reads the same
 	 * way as the tile beside it: under an hour stays in minutes, otherwise whole hours.
@@ -160,24 +130,5 @@ export class InsightsAnalystChatService {
 				...overview.lowImpact.map((row) => row.workflowId),
 			].filter((workflowId) => workflowId.length > 0),
 		);
-	}
-
-	private buildPrompt(request: InsightsAnalystChatRequest, overview: InsightsAnalystOverview) {
-		return [
-			'Answer the operator question using only this Insights overview JSON.',
-			'Cite a workflow only by a workflowId that appears in the overview.',
-			'Time values are in minutes. Write them as hours once they reach 60, e.g. 8100 is "135 hr".',
-			'A highlight metricValue means minutes saved for kind "impact", minutes saved per run for "efficiency", and a count of failed executions for "attention".',
-			`Question: ${request.question}`,
-			request.suggestedPromptId ? `Suggested prompt: ${request.suggestedPromptId}` : '',
-			`Overview: ${JSON.stringify({
-				summary: overview.summary,
-				highlights: overview.highlights,
-				ranking: overview.ranking,
-				lowImpact: overview.lowImpact,
-			})}`,
-		]
-			.filter(Boolean)
-			.join('\n');
 	}
 }

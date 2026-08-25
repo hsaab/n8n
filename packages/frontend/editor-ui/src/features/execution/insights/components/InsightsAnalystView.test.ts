@@ -258,7 +258,12 @@ const weekRange = () => {
 };
 
 const fallbackChat: InsightsAnalystChatResponse = {
-	answer: 'AP invoice ingestion saved the most time this month.',
+	finding: 'AP invoice ingestion saved the most time this month.',
+	evidence: ['AP invoice ingestion saved 3h.'],
+	recommendation: {
+		action: 'Open AP invoice ingestion to see where the time is saved.',
+		detail: 'Compare it with the rest of the ranking for a broader ops view.',
+	},
 	citations: [
 		{
 			workflowId: 'insights-demo-ap-invoice-ingestion',
@@ -609,7 +614,7 @@ describe('InsightsAnalystView', () => {
 
 		await waitFor(() => {
 			expect(screen.getByTestId('insights-analyst-chat-user-bubble')).toBeInTheDocument();
-			expect(screen.getByText(fallbackChat.answer)).toBeInTheDocument();
+			expect(screen.getByTestId('insights-analyst-finding')).toHaveTextContent(fallbackChat.finding);
 		});
 
 		expect(chatRequests()).toHaveLength(1);

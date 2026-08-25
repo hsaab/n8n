@@ -7,7 +7,12 @@ import {
 } from '../insights-analyst.schema';
 
 const chatAnswer = {
-	answer: 'Invoice intake saved the most time this month.',
+	finding: 'Invoice intake saved the most time this month.',
+	evidence: ['AP invoice ingestion saved 135 hr.'],
+	recommendation: {
+		action: 'Open AP invoice ingestion to see where the time is saved.',
+		detail: 'Compare it with the rest of the ranking for a broader ops view.',
+	},
 	citations: [
 		{
 			workflowId: 'insights-demo-ap-invoice-ingestion',
@@ -60,6 +65,26 @@ describe('insightsAnalystChatResponseSchema', () => {
 		const result = insightsAnalystChatResponseSchema.safeParse({
 			...chatAnswer,
 			mode: 'unknown',
+		});
+
+		expect(result.success).toBe(false);
+	});
+
+	it('rejects a chat response that still uses a single answer blob', () => {
+		const result = insightsAnalystChatResponseSchema.safeParse({
+			answer: chatAnswer.finding,
+			citations: chatAnswer.citations,
+			mode: 'llm',
+		});
+
+		expect(result.success).toBe(false);
+	});
+
+	it('rejects a recommendation that is a bare string instead of action and detail', () => {
+		const result = insightsAnalystChatResponseSchema.safeParse({
+			...chatAnswer,
+			recommendation: 'Open the workflow.',
+			mode: 'llm',
 		});
 
 		expect(result.success).toBe(false);

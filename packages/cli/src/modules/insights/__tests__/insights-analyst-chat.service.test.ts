@@ -55,7 +55,12 @@ const demoOverview: InsightsAnalystOverview = {
 const knownWorkflowIds = new Set([REAL_WORKFLOW_ID, OTHER_REAL_WORKFLOW_ID]);
 
 const modelAnswer = {
-	answer: 'AP invoice ingestion saved the most time this month.',
+	finding: 'AP invoice ingestion saved the most time this month.',
+	evidence: ['AP invoice ingestion saved 135 hr.'],
+	recommendation: {
+		action: 'Open AP invoice ingestion to see where the time is saved.',
+		detail: 'Compare it with the rest of the ranking for a broader ops view.',
+	},
 	citations: [
 		{
 			workflowId: REAL_WORKFLOW_ID,
@@ -137,7 +142,8 @@ function expectFallback(response: InsightsAnalystChatResponse) {
 	expect(parsed.error?.issues ?? []).toEqual([]);
 	expect(parsed.success).toBe(true);
 	expect(response.mode).toBe('fallback');
-	expect(response.answer.length).toBeGreaterThan(0);
+	expect(response.finding.length).toBeGreaterThan(0);
+	expect(response.recommendation.action.length).toBeGreaterThan(0);
 	expect(response.citations.every((citation) => knownWorkflowIds.has(citation.workflowId))).toBe(
 		true,
 	);
@@ -287,7 +293,7 @@ describe('InsightsAnalystChatService', () => {
 				metric: '45 min',
 			},
 		]);
-		expect(response.answer).toContain('Daily standup digest');
+		expect(response.finding).toContain('Daily standup digest');
 		expectFallback(response);
 	});
 
@@ -311,7 +317,8 @@ describe('InsightsAnalystChatService', () => {
 
 		// 60 failures formatted as time would read "1 hr saved" on the rail.
 		expect(response.citations).toEqual([]);
-		expect(response.answer).not.toContain('Delayed shipment triage');
+		expect(response.finding).not.toContain('Delayed shipment triage');
+		expect(response.recommendation.action).not.toContain('Delayed shipment triage');
 		expectFallback(response);
 	});
 
@@ -324,11 +331,75 @@ describe('InsightsAnalystChatService', () => {
 		expect(generateObjectMock()).toHaveBeenCalled();
 		expect(insightsAnalystChatResponseSchema.safeParse(response).success).toBe(true);
 		expect(response.mode).toBe('llm');
-		expect(response.answer.length).toBeGreaterThan(0);
+		expect(response.finding).toBe(modelAnswer.finding);
+		expect(response.evidence).toEqual(modelAnswer.evidence);
+		expect(response.recommendation).toEqual(modelAnswer.recommendation);
 		expect(response.citations.map((citation) => citation.workflowId)).toEqual([REAL_WORKFLOW_ID]);
 		expect(
 			response.citations.some((citation) => citation.workflowId === INVENTED_WORKFLOW_ID),
 		).toBe(false);
 		expect(JSON.stringify(loggedCalls(logger))).not.toContain(ANTHROPIC_KEY);
+	});
+
+	it('asks the model for a finding, evidence, and a next step, and includes byTime', async () => {
+		const service = await createService({ apiKey: ANTHROPIC_KEY });
+
+		await service.chat({
+			question: 'Why did failures increase?',
+			suggestedPromptId: 'failures',
+		});
+
+		const prompt = String(generateObjectMock().mock.calls[0]?.[0]?.prompt ?? '');
+		expect(prompt).toContain('finding');
+		expect(prompt).toContain('recommendation.action');
+		expect(prompt).toContain('byTime');
+		expect(prompt).toContain('Do not open with what the data cannot explain');
+	});
+
+	it('cites the attention workflow when asked why failures increased', async () => {
+		const delayedId = 'insights-demo-delayed-shipment-triage';
+		overviewService.getOverview.mockResolvedValue({
+			...demoOverview,
+			highlights: [
+				...demoOverview.highlights,
+				{
+					workflowId: delayedId,
+					kind: 'attention',
+					workflowName: 'Delayed shipment triage',
+					blurb: 'Chases carriers when a shipment misses its promised window.',
+					metricValue: 60,
+				},
+			],
+			ranking: [
+				...demoOverview.ranking,
+				{
+					rank: 2,
+					workflowId: delayedId,
+					name: 'Delayed shipment triage',
+					department: 'Operations',
+					timeSavedMinutes: 45,
+				},
+			],
+		});
+		const service = await createService();
+
+		const response = await service.chat({
+			question: 'Why did failures increase?',
+			suggestedPromptId: 'failures',
+		});
+
+		expect(response.finding).toContain('Delayed shipment triage');
+		expect(response.evidence.some((item) => item.includes('60 failed executions'))).toBe(true);
+		expect(response.recommendation.action).toMatch(/^Open Delayed shipment triage/);
+		expect(response.recommendation.detail).toContain('error messages');
+		expect(response.citations).toEqual([
+			{
+				workflowId: delayedId,
+				label: 'Delayed shipment triage',
+				metric: '60 failed executions',
+			},
+		]);
+		expect(insightsAnalystChatResponseSchema.safeParse(response).success).toBe(true);
+		expect(response.mode).toBe('fallback');
 	});
 });

@@ -48,7 +48,12 @@ const ranking: InsightsAnalystRankingRow[] = [
 ];
 
 const fallbackChat: InsightsAnalystChatResponse = {
-	answer: 'AP invoice ingestion saved the most time this month.',
+	finding: 'AP invoice ingestion saved the most time this month.',
+	evidence: ['AP invoice ingestion saved 3h.'],
+	recommendation: {
+		action: 'Open AP invoice ingestion to see where the time is saved.',
+		detail: 'Compare it with the rest of the ranking for a broader ops view.',
+	},
 	citations: [
 		{
 			workflowId: 'insights-demo-ap-invoice-ingestion',
@@ -61,7 +66,7 @@ const fallbackChat: InsightsAnalystChatResponse = {
 
 const llmChat: InsightsAnalystChatResponse = {
 	...fallbackChat,
-	answer: 'AP invoice ingestion is the time-saved leader this period.',
+	finding: 'AP invoice ingestion is the time-saved leader this period.',
 	mode: 'llm',
 };
 
@@ -105,7 +110,7 @@ describe('InsightsAnalystChatRail', () => {
 			expect(screen.getByTestId('insights-analyst-chat-user-bubble')).toHaveTextContent(
 				'Which workflows saved us the most time?',
 			);
-			expect(screen.getByText(fallbackChat.answer)).toBeInTheDocument();
+			expect(screen.getByTestId('insights-analyst-finding')).toHaveTextContent(fallbackChat.finding);
 		});
 
 		expect(chatRequests()).toHaveLength(1);
@@ -149,7 +154,7 @@ describe('InsightsAnalystChatRail', () => {
 
 		await waitFor(() => {
 			expect(screen.queryByTestId('chat-typing-indicator')).not.toBeInTheDocument();
-			expect(screen.getByText(fallbackChat.answer)).toBeInTheDocument();
+			expect(screen.getByTestId('insights-analyst-finding')).toHaveTextContent(fallbackChat.finding);
 		});
 
 		expect(chatRequests()).toHaveLength(1);
@@ -168,7 +173,7 @@ describe('InsightsAnalystChatRail', () => {
 		await userEvent.click(screen.getByTestId('insights-analyst-suggested-prompt-time-saved'));
 
 		await waitFor(() => {
-			expect(screen.getByText(fallbackChat.answer)).toBeInTheDocument();
+			expect(screen.getByTestId('insights-analyst-finding')).toHaveTextContent(fallbackChat.finding);
 		});
 
 		expect(screen.queryByTestId('insights-analyst-powered-by-claude')).not.toBeInTheDocument();
@@ -182,7 +187,7 @@ describe('InsightsAnalystChatRail', () => {
 		await userEvent.click(screen.getByTestId('insights-analyst-suggested-prompt-time-saved'));
 
 		await waitFor(() => {
-			expect(screen.getByText(llmChat.answer)).toBeInTheDocument();
+			expect(screen.getByTestId('insights-analyst-finding')).toHaveTextContent(llmChat.finding);
 		});
 
 		const badge = screen.getByTestId('insights-analyst-powered-by-claude');
@@ -202,5 +207,26 @@ describe('InsightsAnalystChatRail', () => {
 		const card = screen.getByTestId('insights-analyst-citation');
 		expect(card).toHaveAttribute('data-workflow-id', 'insights-demo-ap-invoice-ingestion');
 		expect(within(card).getByText('AP invoice ingestion')).toBeInTheDocument();
+	});
+
+	it('renders finding, evidence, and next step as separate blocks', async () => {
+		setupRail();
+
+		await userEvent.click(screen.getByTestId('insights-analyst-suggested-prompt-time-saved'));
+
+		await waitFor(() => {
+			expect(screen.getByTestId('insights-analyst-recommendation')).toBeInTheDocument();
+		});
+
+		expect(screen.getByTestId('insights-analyst-finding')).toHaveTextContent(fallbackChat.finding);
+		expect(screen.getByTestId('insights-analyst-evidence')).toHaveTextContent('What the data shows');
+		expect(screen.getByTestId('insights-analyst-evidence')).toHaveTextContent(
+			fallbackChat.evidence[0] ?? '',
+		);
+
+		const recommendation = screen.getByTestId('insights-analyst-recommendation');
+		expect(recommendation).toHaveTextContent('Next step');
+		expect(recommendation).toHaveTextContent(fallbackChat.recommendation.action);
+		expect(recommendation).toHaveTextContent(fallbackChat.recommendation.detail ?? '');
 	});
 });
