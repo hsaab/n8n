@@ -6,6 +6,9 @@ import { VIEWS } from '@/app/constants';
 const InsightsDashboard = async () =>
 	await import('@/features/execution/insights/components/InsightsDashboard.vue');
 
+const InsightsAnalystView = async () =>
+	await import('@/features/execution/insights/components/InsightsAnalystView.vue');
+
 export const InsightsModule: FrontendModuleDescription = {
 	id: 'insights',
 	name: 'Insights',
@@ -28,6 +31,11 @@ export const InsightsModule: FrontendModuleDescription = {
 				},
 			},
 			children: [
+				{
+					path: 'analyst',
+					name: VIEWS.INSIGHTS_ANALYST,
+					component: InsightsAnalystView,
+				},
 				{
 					path: ':insightType?',
 					name: VIEWS.INSIGHTS,
