@@ -47,6 +47,7 @@ const licensedInsightsLinks = (container: Element) =>
 	);
 
 const renderComponent = createComponentRenderer(InsightsAnalystRanking, {
+	props: { days: 30 },
 	global: { stubs: { RouterLink: routerLinkStub } },
 });
 
@@ -90,7 +91,13 @@ describe('InsightsAnalystRanking', () => {
 		expect(section.querySelectorAll('li')).toHaveLength(ranking.length);
 
 		ranking.forEach((row) => expect(getByText(String(row.rank))).toBeInTheDocument());
-		expect(getAllByText('insights.analyst.ranking.trend')).toHaveLength(ranking.length);
+		expect(getAllByText('insights.analyst.ranking.trend 30')).toHaveLength(ranking.length);
+	});
+
+	it('labels the trend with the selected date range rather than a fixed 30 days', () => {
+		const { getAllByText } = renderComponent({ props: { ranking, days: 7 } });
+
+		expect(getAllByText('insights.analyst.ranking.trend 7')).toHaveLength(ranking.length);
 	});
 
 	it('ranks only the top five when the API returns every demo workflow', () => {

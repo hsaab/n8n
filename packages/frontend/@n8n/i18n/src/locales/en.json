@@ -5298,7 +5298,7 @@
 	"insights.analyst.ranking.title": "Workflow impact ranking",
 	"insights.analyst.ranking.workflowInDepartment": "{name} ({department})",
 	"insights.analyst.ranking.timeSaved": "{value} saved",
-	"insights.analyst.ranking.trend": "30-day trend",
+	"insights.analyst.ranking.trend": "{days}-day trend",
 	"insights.analyst.lowImpact.title": "Lowest time saved per run",
 	"insights.analyst.chat.heading": "Ask the analyst",
 	"insights.analyst.chat.description": "Ask about workflow operations, time saved, and reliability.",

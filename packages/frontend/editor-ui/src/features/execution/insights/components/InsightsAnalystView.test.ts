@@ -431,6 +431,8 @@ describe('InsightsAnalystView', () => {
 			}),
 		);
 		expect(screen.getByTestId('insights-chart-total')).toBeInTheDocument();
+		expect(screen.getByTestId('insights-analyst-ranking')).toHaveTextContent('7-day trend');
+		expect(screen.getByTestId('insights-analyst-ranking')).not.toHaveTextContent('30-day trend');
 		expectNoLicensedInsightsTraffic();
 	});
 
@@ -556,6 +558,7 @@ describe('InsightsAnalystView', () => {
 
 		const ranking = screen.getByTestId('insights-analyst-ranking');
 		expect(ranking).toHaveTextContent(`${formatInsightsTimeSavedLabel(8100)} saved`);
+		expect(ranking).toHaveTextContent('30-day trend');
 
 		const lowImpact = screen.getByTestId('insights-analyst-low-impact');
 		expect(within(lowImpact).getByText('Ticket triage')).toBeInTheDocument();

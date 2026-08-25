@@ -8,6 +8,7 @@ import { computed } from 'vue';
 
 const props = defineProps<{
 	ranking: InsightsAnalystRankingRow[];
+	days: number;
 }>();
 
 const i18n = useI18n();
@@ -53,7 +54,11 @@ const timeSavedLabel = (row: InsightsAnalystRankingRow) =>
 
 				<span :class="$style.trend">
 					<N8nText size="xsmall" color="text-light">
-						{{ i18n.baseText('insights.analyst.ranking.trend') }}
+						{{
+							i18n.baseText('insights.analyst.ranking.trend', {
+								interpolate: { days: props.days },
+							})
+						}}
 					</N8nText>
 				</span>
 

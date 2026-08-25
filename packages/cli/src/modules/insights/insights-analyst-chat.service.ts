@@ -18,6 +18,9 @@ const modelPayloadSchema = z.object({
 	citations: z.array(insightsAnalystCitationSchema),
 });
 
+/** Bound the provider call so a stalled upstream cannot pin the request handler. */
+const ANALYST_CHAT_TIMEOUT_MS = 60_000;
+
 @Service()
 export class InsightsAnalystChatService {
 	constructor(
@@ -70,6 +73,7 @@ export class InsightsAnalystChatService {
 			model: provider(this.modelId()),
 			schema: modelPayloadSchema,
 			prompt: this.buildPrompt(request, overview),
+			timeout: ANALYST_CHAT_TIMEOUT_MS,
 		});
 
 		const citations = result.object.citations.filter((citation) =>

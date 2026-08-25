@@ -49,6 +49,7 @@ const summaryDisplay = computed(() => transformInsightsSummary(overview.value?.s
 const chartData = computed(() => overview.value?.byTime ?? []);
 const highlights = computed(() => overview.value?.highlights ?? []);
 const ranking = computed(() => overview.value?.ranking ?? []);
+const rankingTrendDays = computed(() => Math.max(range.value.end.compare(range.value.start), 1));
 const lowImpact = computed(() => overview.value?.lowImpact ?? []);
 
 const loadOverview = async () => {
@@ -111,7 +112,7 @@ onMounted(() => {
 						/>
 					</div>
 
-					<InsightsAnalystRanking :ranking />
+					<InsightsAnalystRanking :ranking :days="rankingTrendDays" />
 					<InsightsAnalystLowImpact :low-impact />
 				</div>
 
