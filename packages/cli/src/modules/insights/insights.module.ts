@@ -1,6 +1,8 @@
+import { Logger } from '@n8n/backend-common';
 import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule, OnShutdown } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import { InstanceSettings } from 'n8n-core';
 
 /**
  * Only main- and webhook-type instances collect insights because
@@ -13,6 +15,15 @@ export class InsightsModule implements ModuleInterface {
 
 		const { InsightsService } = await import('./insights.service');
 		await Container.get(InsightsService).init();
+
+		if (Container.get(InstanceSettings).instanceType === 'main') {
+			try {
+				const { InsightsAnalystSeedService } = await import('./insights-analyst-seed.service');
+				await Container.get(InsightsAnalystSeedService).ensureSeeded();
+			} catch (error) {
+				Container.get(Logger).error('Failed to seed Insights analyst demo workspace', { error });
+			}
+		}
 	}
 
 	async entities() {
