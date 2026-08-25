@@ -5305,6 +5305,8 @@
 	"insights.analyst.chat.welcome": "Ask a question about the demo workspace. I'll cite workflows and metrics from Insights.",
 	"insights.analyst.chat.placeholder": "Ask about workflow performance",
 	"insights.analyst.chat.poweredByClaude": "Powered by Claude",
+	"insights.analyst.chat.evidenceHeading": "What the data shows",
+	"insights.analyst.chat.recommendationHeading": "Next step",
 	"insights.analyst.chat.suggestedPrompt.timeSaved": "Which workflows saved us the most time?",
 	"insights.analyst.chat.suggestedPrompt.failures": "Why did failures increase?",
 	"insights.analyst.chat.suggestedPrompt.opsReview": "Summarize this for an ops review.",

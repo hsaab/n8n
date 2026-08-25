@@ -77,7 +77,30 @@ async function submitSuggested(id: string, labelKey: BaseTextKey) {
 					<N8nText size="small">{{ message.text }}</N8nText>
 				</div>
 				<div v-else :class="$style.assistant">
-					<N8nText>{{ message.answer }}</N8nText>
+					<N8nText data-test-id="insights-analyst-finding">{{ message.finding }}</N8nText>
+					<section
+						v-if="message.evidence.length > 0"
+						:class="$style.evidence"
+						data-test-id="insights-analyst-evidence"
+					>
+						<N8nHeading tag="h4" size="small" bold>
+							{{ i18n.baseText('insights.analyst.chat.evidenceHeading') }}
+						</N8nHeading>
+						<ul :class="$style.evidenceList">
+							<li v-for="(item, evidenceIndex) in message.evidence" :key="evidenceIndex">
+								<N8nText size="small">{{ item }}</N8nText>
+							</li>
+						</ul>
+					</section>
+					<section :class="$style.recommendation" data-test-id="insights-analyst-recommendation">
+						<N8nHeading tag="h4" size="small" bold>
+							{{ i18n.baseText('insights.analyst.chat.recommendationHeading') }}
+						</N8nHeading>
+						<N8nText size="small">{{ message.recommendation.action }}</N8nText>
+						<N8nText v-if="message.recommendation.detail" size="small" color="text-light">
+							{{ message.recommendation.detail }}
+						</N8nText>
+					</section>
 					<div
 						v-for="citation in visibleCitations(message.citations)"
 						:key="citation.workflowId"
@@ -183,6 +206,30 @@ $rail-height: 576px;
 	flex-direction: column;
 	gap: var(--spacing--xs);
 	align-self: stretch;
+}
+
+.evidence {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--4xs);
+}
+
+.evidenceList {
+	margin: 0;
+	padding-left: var(--spacing--md);
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--4xs);
+}
+
+.recommendation {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--4xs);
+	padding: var(--spacing--sm);
+	border: var(--border);
+	border-radius: var(--radius--lg);
+	background: var(--background--subtle);
 }
 
 .citation {
