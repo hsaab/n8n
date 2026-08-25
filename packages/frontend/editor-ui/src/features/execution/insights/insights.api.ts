@@ -1,6 +1,7 @@
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import type {
+	InsightsAnalystOverview,
 	InsightsSummary,
 	InsightsByTime,
 	InsightsByWorkflow,
@@ -51,6 +52,17 @@ export const fetchInsightsTimeSaved = async (
 		context,
 		'GET',
 		'/insights/by-time/time-saved',
+		serializeInsightsFilter(filter),
+	);
+
+export const fetchInsightsAnalystOverview = async (
+	context: IRestApiContext,
+	filter?: InsightsDateFilterDto,
+): Promise<InsightsAnalystOverview> =>
+	await makeRestApiRequest(
+		context,
+		'GET',
+		'/insights/analyst/overview',
 		serializeInsightsFilter(filter),
 	);
 
