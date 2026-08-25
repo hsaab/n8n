@@ -273,6 +273,27 @@ describe('InsightsAnalystSeedService', () => {
 		);
 	});
 
+	it('adds the owner when the demo project already exists without membership', async () => {
+		projects.push({
+			id: DEMO_PROJECT_ID,
+			name: DEMO_PROJECT_NAME,
+			type: 'team',
+		});
+
+		await buildSeeder().ensureSeeded();
+
+		expect(projectRepository.save).not.toHaveBeenCalled();
+		expect(
+			projectService.addUser.mock.calls.some(
+				([projectId, relation]) =>
+					projectId === DEMO_PROJECT_ID &&
+					relation.userId === owner.id &&
+					relation.role === 'project:admin',
+			),
+		).toBe(true);
+		expect(createdWorkflows).toHaveLength(8);
+	});
+
 	it('second start keeps the same ids and counts', async () => {
 		const seeder = buildSeeder();
 		await seeder.ensureSeeded();

@@ -121,11 +121,11 @@ export class InsightsAnalystSeedService {
 					type: 'team',
 				}),
 			);
-			await this.projectService.addUser(INSIGHTS_DEMO_PROJECT_ID, {
-				userId: owner.id,
-				role: 'project:admin',
-			});
 		}
+		await this.projectService.addUser(INSIGHTS_DEMO_PROJECT_ID, {
+			userId: owner.id,
+			role: 'project:admin',
+		});
 	}
 
 	private async ensureDemoWorkflows(owner: User) {
