@@ -76,6 +76,7 @@ export class InsightsAnalystSeedService {
 
 		const owner = await this.userRepository.findOne({
 			where: { role: { slug: GLOBAL_OWNER_ROLE.slug } },
+			relations: ['role'],
 		});
 		if (!owner) {
 			return;
