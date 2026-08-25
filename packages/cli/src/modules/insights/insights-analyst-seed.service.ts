@@ -62,10 +62,13 @@ export class InsightsAnalystSeedService {
 
 	async ensureSeeded() {
 		this.inFlight ??= this.seedDemoWorkspace();
+		const seedPromise = this.inFlight;
 		try {
-			await this.inFlight;
+			await seedPromise;
 		} finally {
-			this.inFlight = undefined;
+			if (this.inFlight === seedPromise) {
+				this.inFlight = undefined;
+			}
 		}
 	}
 
@@ -200,9 +203,8 @@ export class InsightsAnalystSeedService {
 	}
 
 	private async saveMetadata() {
-		const metadataRows = INSIGHTS_DEMO_WORKFLOWS.map((spec, index) => {
+		const metadataRows = INSIGHTS_DEMO_WORKFLOWS.map((spec) => {
 			const metadata = new InsightsMetadata();
-			metadata.metaId = index + 1;
 			metadata.workflowId = spec.id;
 			metadata.workflowName = spec.name;
 			metadata.projectId = INSIGHTS_DEMO_PROJECT_ID;
