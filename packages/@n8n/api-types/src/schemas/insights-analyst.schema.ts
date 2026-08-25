@@ -28,12 +28,21 @@ export const insightsAnalystChatResponseSchema = z
 	.strict();
 export type InsightsAnalystChatResponse = z.infer<typeof insightsAnalystChatResponseSchema>;
 
+/**
+ * Which of the three analyst cards a highlight fills. It also decides how
+ * `metricValue` is read: total minutes saved for `impact`, minutes saved per run
+ * for `efficiency`, and a failed execution count for `attention`.
+ */
+export const insightsAnalystHighlightKindSchema = z.enum(['impact', 'efficiency', 'attention']);
+export type InsightsAnalystHighlightKind = z.infer<typeof insightsAnalystHighlightKindSchema>;
+
 export const insightsAnalystHighlightSchema = z
 	.object({
 		workflowId: z.string(),
-		title: z.string(),
+		kind: insightsAnalystHighlightKindSchema,
+		workflowName: z.string(),
 		blurb: z.string(),
-		metric: z.string(),
+		metricValue: z.number(),
 	})
 	.strict();
 export type InsightsAnalystHighlight = z.infer<typeof insightsAnalystHighlightSchema>;
@@ -43,7 +52,8 @@ export const insightsAnalystRankingRowSchema = z
 		rank: z.number(),
 		workflowId: z.string(),
 		name: z.string(),
-		timeSavedLabel: z.string(),
+		department: z.string(),
+		timeSavedMinutes: z.number(),
 	})
 	.strict();
 export type InsightsAnalystRankingRow = z.infer<typeof insightsAnalystRankingRowSchema>;
@@ -53,7 +63,7 @@ export const insightsAnalystLowImpactSchema = z
 		workflowId: z.string(),
 		name: z.string(),
 		blurb: z.string(),
-		timeSavedPerRunLabel: z.string(),
+		timeSavedPerRunMinutes: z.number(),
 	})
 	.strict();
 export type InsightsAnalystLowImpact = z.infer<typeof insightsAnalystLowImpactSchema>;

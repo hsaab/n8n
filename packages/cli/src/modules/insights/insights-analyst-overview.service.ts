@@ -11,6 +11,7 @@ import { Service } from '@n8n/di';
 import { DateTime } from 'luxon';
 
 import {
+	findInsightsDemoWorkflow,
 	INSIGHTS_DEMO_PROJECT_ID,
 	INSIGHTS_DEMO_SEED_DAYS,
 } from './insights-analyst-seed.constants';
@@ -82,18 +83,28 @@ export class InsightsAnalystOverviewService {
 			.sort((left, right) => right.timeSaved - left.timeSaved);
 	}
 
+	/**
+	 * Always the same three cards, in the same order, so the page never reflows:
+	 * the biggest total saving, the thinnest saving per run, and the most failures.
+	 */
 	private buildHighlights(rows: DemoWorkflowRow[]): InsightsAnalystHighlight[] {
-		return rows.slice(0, 3).map((row) => ({
-			workflowId: row.workflowId,
-			title: row.workflowName,
-			blurb:
-				row === rows[0]
-					? 'Saved the most time this month'
-					: row.failed > 0
-						? 'Worth a closer look this period'
-						: 'Steady time saved this period',
-			metric: this.minutesLabel(row.timeSaved),
-		}));
+		const byTimeSaved = this.pick(rows, (row) => row.timeSaved, 'max');
+		const byPerRun = this.pick(this.rowsWithRuns(rows), (row) => this.timeSavedPerRun(row), 'min');
+		const byFailures = this.pick(rows, (row) => row.failed, 'max');
+
+		const highlights: InsightsAnalystHighlight[] = [];
+
+		if (byTimeSaved) {
+			highlights.push(this.highlight('impact', byTimeSaved, byTimeSaved.timeSaved));
+		}
+		if (byPerRun) {
+			highlights.push(this.highlight('efficiency', byPerRun, this.timeSavedPerRun(byPerRun)));
+		}
+		if (byFailures) {
+			highlights.push(this.highlight('attention', byFailures, byFailures.failed));
+		}
+
+		return highlights;
 	}
 
 	private buildRanking(rows: DemoWorkflowRow[]): InsightsAnalystRankingRow[] {
@@ -101,32 +112,61 @@ export class InsightsAnalystOverviewService {
 			rank: index + 1,
 			workflowId: row.workflowId,
 			name: row.workflowName,
-			timeSavedLabel: this.minutesLabel(row.timeSaved),
+			department: findInsightsDemoWorkflow(row.workflowId)?.department ?? '',
+			timeSavedMinutes: row.timeSaved,
 		}));
 	}
 
+	/**
+	 * The three thinnest savings per run. There is no minimum threshold: every
+	 * seeded workflow saves several minutes per run, so a threshold emptied the list.
+	 */
 	private buildLowImpact(rows: DemoWorkflowRow[]): InsightsAnalystLowImpact[] {
-		return rows
-			.slice()
+		return this.rowsWithRuns(rows)
 			.sort((left, right) => this.timeSavedPerRun(left) - this.timeSavedPerRun(right))
-			.filter((row) => this.timeSavedPerRun(row) < 2)
 			.slice(0, 3)
 			.map((row) => ({
 				workflowId: row.workflowId,
 				name: row.workflowName,
-				blurb: 'Low time saved per run',
-				timeSavedPerRunLabel: this.minutesLabel(this.timeSavedPerRun(row)),
+				blurb: findInsightsDemoWorkflow(row.workflowId)?.blurb ?? '',
+				timeSavedPerRunMinutes: this.timeSavedPerRun(row),
 			}));
 	}
 
-	private timeSavedPerRun(row: DemoWorkflowRow) {
-		if (row.succeeded <= 0) {
-			return 0;
-		}
-		return row.timeSaved / row.succeeded;
+	private highlight(
+		kind: InsightsAnalystHighlight['kind'],
+		row: DemoWorkflowRow,
+		metricValue: number,
+	): InsightsAnalystHighlight {
+		return {
+			workflowId: row.workflowId,
+			kind,
+			workflowName: row.workflowName,
+			blurb: findInsightsDemoWorkflow(row.workflowId)?.blurb ?? '',
+			metricValue,
+		};
 	}
 
-	private minutesLabel(minutes: number) {
-		return `${Math.round(minutes)} min`;
+	/** A workflow with no successful run has no time saved per run, only an unknown one. */
+	private rowsWithRuns(rows: DemoWorkflowRow[]) {
+		return rows.filter((row) => row.succeeded > 0);
+	}
+
+	private pick(
+		rows: DemoWorkflowRow[],
+		score: (row: DemoWorkflowRow) => number,
+		mode: 'max' | 'min',
+	): DemoWorkflowRow | undefined {
+		return rows.reduce<DemoWorkflowRow | undefined>((best, row) => {
+			if (!best) {
+				return row;
+			}
+			const isBetter = mode === 'max' ? score(row) > score(best) : score(row) < score(best);
+			return isBetter ? row : best;
+		}, undefined);
+	}
+
+	private timeSavedPerRun(row: DemoWorkflowRow) {
+		return row.timeSaved / row.succeeded;
 	}
 }

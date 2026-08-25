@@ -19,11 +19,96 @@ import type { WorkflowCreationService } from '@/workflows/workflow-creation.serv
 import { NumberToPeriodUnit, NumberToType } from '../database/entities/insights-shared';
 import type { InsightsByPeriodRepository } from '../database/repositories/insights-by-period.repository';
 import type { InsightsMetadataRepository } from '../database/repositories/insights-metadata.repository';
+import {
+	INSIGHTS_DEMO_SEED_DAYS,
+	INSIGHTS_DEMO_WORKFLOWS,
+} from '../insights-analyst-seed.constants';
 import { InsightsAnalystSeedService } from '../insights-analyst-seed.service';
 
 const DEMO_PROJECT_ID = 'insights-demo-project';
 const DEMO_PROJECT_NAME = 'Demo Operations';
 const CUSTOMER_PROJECT_ID = 'ops-customer-project';
+
+const HIGH_VOLUME_WORKFLOW_ID = 'insights-demo-ap-invoice-ingestion'; // 18 runs a day
+const LOW_VOLUME_WORKFLOW_ID = 'insights-demo-delayed-shipment-triage'; // 5 runs a day
+const MOST_FAILURES_WORKFLOW_ID = 'insights-demo-delayed-shipment-triage'; // 2 failures a day
+const NEVER_FAILING_WORKFLOW_ID = 'insights-demo-standup-digest'; // 0 failures a day
+
+/** The eight workflows on the analyst design, in the order the ranking table shows them. */
+const EXPECTED_DEMO_CATALOG = [
+	{
+		id: 'insights-demo-ap-invoice-ingestion',
+		name: 'AP invoice ingestion',
+		department: 'Finance',
+		timeSavedPerExecution: 15,
+		dailyExecutions: 18,
+		dailyFailures: 1,
+		avgRuntimeMs: 42000,
+	},
+	{
+		id: 'insights-demo-lead-enrichment',
+		name: 'Lead enrichment & scoring',
+		department: 'Revenue Ops',
+		timeSavedPerExecution: 12,
+		dailyExecutions: 15,
+		dailyFailures: 1,
+		avgRuntimeMs: 30000,
+	},
+	{
+		id: 'insights-demo-order-routing',
+		name: 'Order routing escalations',
+		department: 'Operations',
+		timeSavedPerExecution: 10,
+		dailyExecutions: 16,
+		dailyFailures: 1,
+		avgRuntimeMs: 22000,
+	},
+	{
+		id: 'insights-demo-new-hire-provisioning',
+		name: 'New-hire IT provisioning',
+		department: 'People',
+		timeSavedPerExecution: 12,
+		dailyExecutions: 9,
+		dailyFailures: 0,
+		avgRuntimeMs: 55000,
+	},
+	{
+		id: 'insights-demo-vendor-onboarding',
+		name: 'Vendor onboarding nudges',
+		department: 'Procurement',
+		timeSavedPerExecution: 5,
+		dailyExecutions: 12,
+		dailyFailures: 0,
+		avgRuntimeMs: 16000,
+	},
+	{
+		id: 'insights-demo-standup-digest',
+		name: 'Daily standup digest',
+		department: 'Operations',
+		timeSavedPerExecution: 7,
+		dailyExecutions: 8,
+		dailyFailures: 0,
+		avgRuntimeMs: 11000,
+	},
+	{
+		id: 'insights-demo-survey-follow-up',
+		name: 'Customer survey follow-up',
+		department: 'Customer Success',
+		timeSavedPerExecution: 8,
+		dailyExecutions: 6,
+		dailyFailures: 1,
+		avgRuntimeMs: 19000,
+	},
+	{
+		id: 'insights-demo-delayed-shipment-triage',
+		name: 'Delayed shipment triage',
+		department: 'Operations',
+		timeSavedPerExecution: 9,
+		dailyExecutions: 5,
+		dailyFailures: 2,
+		avgRuntimeMs: 47000,
+	},
+];
 
 type RecordRow = Record<string, unknown> & { id?: string };
 
@@ -160,6 +245,7 @@ describe('InsightsAnalystSeedService', () => {
 	const metadataRows: Array<Record<string, unknown>> = [];
 	const periodRows: Array<Record<string, unknown>> = [];
 	let projects: RecordRow[] = [];
+	let workflows: RecordRow[] = [];
 
 	const buildSeeder = () =>
 		new InsightsAnalystSeedService(
@@ -196,7 +282,7 @@ describe('InsightsAnalystSeedService', () => {
 		projectService.addUser.mockResolvedValue(mock());
 
 		projects = installRecordStore(projectRepository);
-		installRecordStore(workflowRepository);
+		workflows = installRecordStore(workflowRepository);
 		collectWrites(executionRepository, executions);
 		collectWrites(insightsMetadataRepository, metadataRows);
 		collectWrites(insightsByPeriodRepository, periodRows);
@@ -219,6 +305,25 @@ describe('InsightsAnalystSeedService', () => {
 
 	function uniquePeriodDays() {
 		return new Set(periodRows.map((row) => toUtcDateKey(row.periodStart)).filter(Boolean));
+	}
+
+	/** Total value written per workflow for one period type across the whole seeded window. */
+	function periodTotalsByWorkflow(type: 'success' | 'failure' | 'runtime_ms' | 'time_saved_min') {
+		const workflowIdByMetaId = new Map(
+			metadataRows.map((row) => [row.metaId as number, row.workflowId as string] as const),
+		);
+		const totals = new Map<string, number>();
+
+		for (const row of periodRows) {
+			if (periodTypeOf(row) !== type) continue;
+
+			const workflowId = workflowIdByMetaId.get(row.metaId as number);
+			if (workflowId === undefined) continue;
+
+			totals.set(workflowId, (totals.get(workflowId) ?? 0) + Number(row.value ?? 0));
+		}
+
+		return totals;
 	}
 
 	it('first start with an owner writes the full demo set', async () => {
@@ -292,6 +397,25 @@ describe('InsightsAnalystSeedService', () => {
 		expect(new Set(periodRows.map((row) => periodTypeOf(row)))).toEqual(firstPeriodTypes);
 	});
 
+	it('a workflow seeded under an older catalog name is renamed in place', async () => {
+		const renamed = INSIGHTS_DEMO_WORKFLOWS[0];
+		workflows.push({
+			id: renamed.id,
+			name: 'Invoice bot',
+			settings: { executionOrder: 'v1', timeSavedPerExecution: 1 },
+		});
+
+		await buildSeeder().ensureSeeded();
+
+		expect(workflowRepository.update).toHaveBeenCalledWith(renamed.id, {
+			name: renamed.name,
+			settings: expect.objectContaining({
+				timeSavedPerExecution: renamed.timeSavedPerExecution,
+			}),
+		});
+		expect(createdWorkflowIds()).not.toContain(renamed.id);
+	});
+
 	it('a customer Demo Operations project without the insights-demo marker is untouched', async () => {
 		projects.push({
 			id: CUSTOMER_PROJECT_ID,
@@ -324,6 +448,59 @@ describe('InsightsAnalystSeedService', () => {
 		expect(workflowCreationService.createWorkflow).not.toHaveBeenCalled();
 		expect(executionRepository.save).not.toHaveBeenCalled();
 		expect(insightsByPeriodRepository.save).not.toHaveBeenCalled();
+	});
+
+	it('ships the eight demo workflows the analyst design expects', () => {
+		const catalog = INSIGHTS_DEMO_WORKFLOWS.map((spec) => ({
+			id: spec.id,
+			name: spec.name,
+			department: spec.department,
+			timeSavedPerExecution: spec.timeSavedPerExecution,
+			dailyExecutions: spec.dailyExecutions,
+			dailyFailures: spec.dailyFailures,
+			avgRuntimeMs: spec.avgRuntimeMs,
+		}));
+
+		expect(catalog).toEqual(EXPECTED_DEMO_CATALOG);
+	});
+
+	it('gives every demo workflow its own blurb for the analyst cards', () => {
+		const blurbs = INSIGHTS_DEMO_WORKFLOWS.map((spec) => spec.blurb);
+
+		expect(blurbs.every((blurb) => typeof blurb === 'string' && blurb.length > 0)).toBe(true);
+		expect(new Set(blurbs).size).toBe(INSIGHTS_DEMO_WORKFLOWS.length);
+	});
+
+	it('seeds a busy workflow with more successful runs than a quiet one', async () => {
+		await buildSeeder().ensureSeeded();
+
+		const successTotals = periodTotalsByWorkflow('success');
+		expect([...successTotals.keys()]).toEqual(
+			expect.arrayContaining([HIGH_VOLUME_WORKFLOW_ID, LOW_VOLUME_WORKFLOW_ID]),
+		);
+
+		const busiest = successTotals.get(HIGH_VOLUME_WORKFLOW_ID);
+		const quietest = successTotals.get(LOW_VOLUME_WORKFLOW_ID);
+
+		expect(busiest).toBeGreaterThan(0);
+		expect(quietest).toBeGreaterThan(0);
+		expect(busiest).toBeGreaterThan(quietest!);
+
+		// 18 executions a day, so the daily average stays near that even with a wave on top.
+		const busiestPerDay = busiest! / INSIGHTS_DEMO_SEED_DAYS;
+		expect(busiestPerDay).toBeGreaterThan(12);
+		expect(busiestPerDay).toBeLessThan(24);
+	});
+
+	it('seeds the most failures on the workflow the design flags for attention', async () => {
+		await buildSeeder().ensureSeeded();
+
+		const failureTotals = periodTotalsByWorkflow('failure');
+		const worstFirst = [...failureTotals.entries()].sort(([, left], [, right]) => right - left);
+
+		expect(worstFirst[0]?.[0]).toBe(MOST_FAILURES_WORKFLOW_ID);
+		expect(worstFirst[0]?.[1]).toBeGreaterThan(0);
+		expect(failureTotals.get(NEVER_FAILING_WORKFLOW_ID)).toBe(0);
 	});
 
 	it('seed works when getMaxTeamProjects is 0', async () => {

@@ -53,9 +53,10 @@ const chartReadyOverview: InsightsAnalystOverview = {
 	highlights: [
 		{
 			workflowId: 'insights-demo-ap-invoice-ingestion',
-			title: 'AP invoice ingestion',
-			blurb: 'Saved the most time this month',
-			metric: '180 min',
+			kind: 'impact',
+			workflowName: 'AP invoice ingestion',
+			blurb: 'Files invoices from the shared mailbox for approval.',
+			metricValue: 8100,
 		},
 	],
 	ranking: [
@@ -63,15 +64,16 @@ const chartReadyOverview: InsightsAnalystOverview = {
 			rank: 1,
 			workflowId: 'insights-demo-ap-invoice-ingestion',
 			name: 'AP invoice ingestion',
-			timeSavedLabel: '180 min',
+			department: 'Finance',
+			timeSavedMinutes: 8100,
 		},
 	],
 	lowImpact: [
 		{
-			workflowId: 'insights-demo-inventory-sync',
-			name: 'Inventory sync',
-			blurb: 'Low time saved per run',
-			timeSavedPerRunLabel: '4 min',
+			workflowId: 'insights-demo-standup-digest',
+			name: 'Daily standup digest',
+			blurb: 'Posts yesterday ticket movement into the team channel.',
+			timeSavedPerRunMinutes: 7,
 		},
 	],
 };
@@ -82,7 +84,7 @@ const fallbackChatAnswer: InsightsAnalystChatResponse = {
 		{
 			workflowId: 'insights-demo-ap-invoice-ingestion',
 			label: 'AP invoice ingestion',
-			metric: '180 min',
+			metric: '135 hr',
 		},
 	],
 	mode: 'fallback',
@@ -172,7 +174,11 @@ describe('InsightsAnalystController', () => {
 
 		expect(found?.route.licenseFeature).toBeUndefined();
 		expect(overviewService.getOverview).toHaveBeenCalled();
-		expect(insightsAnalystOverviewSchema.safeParse(response).success).toBe(true);
+
+		const parsed = insightsAnalystOverviewSchema.safeParse(response);
+		// Report the offending field rather than a bare `false`.
+		expect(parsed.error?.issues ?? []).toEqual([]);
+		expect(parsed.success).toBe(true);
 		expect(response.byTime.length).toBeGreaterThan(0);
 		expect(response.byTime[0]).toEqual(
 			expect.objectContaining({
@@ -255,7 +261,7 @@ describe('InsightsAnalystController', () => {
 				{
 					workflowId: 'insights-demo-ap-invoice-ingestion',
 					label: 'AP invoice ingestion',
-					metric: '180 min',
+					metric: '135 hr',
 				},
 			],
 			mode: 'llm',
