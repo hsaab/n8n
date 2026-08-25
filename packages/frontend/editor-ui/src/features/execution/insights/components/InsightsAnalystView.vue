@@ -132,6 +132,7 @@ onMounted(() => {
 }
 
 .chart {
+	height: 292px;
 	padding: var(--spacing--lg) 0;
 	border: var(--border-width) var(--border-style) var(--color--foreground);
 	border-radius: var(--radius--lg);
