@@ -38,10 +38,14 @@ export class InsightsAnalystChatService {
 
 		try {
 			return await this.askModel(request, overview, knownWorkflowIds);
-		} catch {
-			this.logger.warn('Insights analyst chat provider failed', {
-				model: this.modelId(),
-			});
+		} catch (error) {
+			// The reason goes in the message because the console transport drops metadata,
+			// and without it a degraded answer is indistinguishable from having no API key.
+			this.logger.warn(
+				`Insights analyst chat provider ${this.modelId()} failed, answering from seeded data instead: ${
+					error instanceof Error ? error.message : String(error)
+				}`,
+			);
 			return this.fallbackAnswer(overview, knownWorkflowIds);
 		}
 	}
@@ -52,25 +56,23 @@ export class InsightsAnalystChatService {
 		knownWorkflowIds: Set<string>,
 	): Promise<InsightsAnalystChatResponse> {
 		const { createAnthropic } = await import('@ai-sdk/anthropic');
-		const { generateText } = await import('ai');
+		const { generateObject } = await import('ai');
 
 		const provider = createAnthropic({
 			apiKey: this.apiKey(),
 		});
-		const result = await generateText({
+		/**
+		 * `generateObject` rather than `generateText`: asking for JSON in the prompt and
+		 * parsing the reply fails whenever the model wraps it in prose or a code fence,
+		 * which sends every answer to the fallback. This constrains the model instead.
+		 */
+		const result = await generateObject({
 			model: provider(this.modelId()),
+			schema: modelPayloadSchema,
 			prompt: this.buildPrompt(request, overview),
 		});
 
-		const parsed = this.parseModelText(result.text);
-		if (!parsed) {
-			this.logger.warn('Insights analyst chat model returned malformed JSON', {
-				model: this.modelId(),
-			});
-			return this.fallbackAnswer(overview, knownWorkflowIds);
-		}
-
-		const citations = parsed.citations.filter((citation) =>
+		const citations = result.object.citations.filter((citation) =>
 			knownWorkflowIds.has(citation.workflowId),
 		);
 
@@ -80,7 +82,7 @@ export class InsightsAnalystChatService {
 		});
 
 		return {
-			answer: parsed.answer,
+			answer: result.object.answer,
 			citations,
 			mode: 'llm',
 		};
@@ -104,38 +106,29 @@ export class InsightsAnalystChatService {
 		);
 	}
 
-	private parseModelText(text: string) {
-		try {
-			const parsed: unknown = JSON.parse(text);
-			const result = modelPayloadSchema.safeParse(parsed);
-			if (!result.success) {
-				return null;
-			}
-			return result.data;
-		} catch {
-			return null;
-		}
-	}
-
 	private fallbackAnswer(
 		overview: InsightsAnalystOverview,
 		knownWorkflowIds: Set<string>,
 	): InsightsAnalystChatResponse {
 		const top = overview.ranking[0];
-		const highlight = overview.highlights[0];
+		/**
+		 * Only the impact card can be cited here. Its metricValue is minutes saved,
+		 * while the attention card's is a failure count that must never be read as time.
+		 */
+		const impact = overview.highlights.find((row) => row.kind === 'impact');
 		const citations: InsightsAnalystCitation[] = [];
 
 		if (top && knownWorkflowIds.has(top.workflowId)) {
 			citations.push({
 				workflowId: top.workflowId,
 				label: top.name,
-				metric: top.timeSavedLabel,
+				metric: this.timeSavedLabel(top.timeSavedMinutes),
 			});
-		} else if (highlight && knownWorkflowIds.has(highlight.workflowId)) {
+		} else if (impact && knownWorkflowIds.has(impact.workflowId)) {
 			citations.push({
-				workflowId: highlight.workflowId,
-				label: highlight.title,
-				metric: highlight.metric,
+				workflowId: impact.workflowId,
+				label: impact.workflowName,
+				metric: this.timeSavedLabel(impact.metricValue),
 			});
 		}
 
@@ -151,6 +144,14 @@ export class InsightsAnalystChatService {
 		};
 	}
 
+	/**
+	 * Mirrors `transformInsightsTimeSaved` in the editor so a citation reads the same
+	 * way as the tile beside it: under an hour stays in minutes, otherwise whole hours.
+	 */
+	private timeSavedLabel(minutes: number) {
+		return Math.abs(minutes) < 60 ? `${Math.round(minutes)} min` : `${Math.round(minutes / 60)} hr`;
+	}
+
 	private knownWorkflowIds(overview: InsightsAnalystOverview) {
 		return new Set(
 			[
@@ -164,7 +165,9 @@ export class InsightsAnalystChatService {
 	private buildPrompt(request: InsightsAnalystChatRequest, overview: InsightsAnalystOverview) {
 		return [
 			'Answer the operator question using only this Insights overview JSON.',
-			'Return JSON: {"answer": string, "citations": [{"workflowId": string, "label": string, "metric": string}]}.',
+			'Cite a workflow only by a workflowId that appears in the overview.',
+			'Time values are in minutes. Write them as hours once they reach 60, e.g. 8100 is "135 hr".',
+			'A highlight metricValue means minutes saved for kind "impact", minutes saved per run for "efficiency", and a count of failed executions for "attention".',
 			`Question: ${request.question}`,
 			request.suggestedPromptId ? `Suggested prompt: ${request.suggestedPromptId}` : '',
 			`Overview: ${JSON.stringify({

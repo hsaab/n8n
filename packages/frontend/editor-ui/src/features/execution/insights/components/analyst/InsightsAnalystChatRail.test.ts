@@ -42,7 +42,8 @@ const ranking: InsightsAnalystRankingRow[] = [
 		rank: 1,
 		workflowId: 'insights-demo-ap-invoice-ingestion',
 		name: 'AP invoice ingestion',
-		timeSavedLabel: '3h',
+		department: 'Finance',
+		timeSavedMinutes: 180,
 	},
 ];
 
@@ -102,7 +103,7 @@ describe('InsightsAnalystChatRail', () => {
 
 		await waitFor(() => {
 			expect(screen.getByTestId('insights-analyst-chat-user-bubble')).toHaveTextContent(
-				'Which workflow saved the most time?',
+				'Which workflows saved us the most time?',
 			);
 			expect(screen.getByText(fallbackChat.answer)).toBeInTheDocument();
 		});

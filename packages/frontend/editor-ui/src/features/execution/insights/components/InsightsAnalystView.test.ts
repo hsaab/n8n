@@ -13,9 +13,11 @@ import { reactive, ref } from 'vue';
 import { defaultSettings } from '@/__tests__/defaults';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
+import { VIEWS } from '@/app/constants';
 import { useInsightsStore } from '@/features/execution/insights/insights.store';
 import {
 	formatDateRange,
+	formatInsightsTimeSavedLabel,
 	getAdjustedDateRange,
 } from '@/features/execution/insights/insights.utils';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -28,14 +30,25 @@ const mockRoute = reactive({
 	query: {},
 });
 
+/**
+ * A neutral anchor that exposes the route it was handed. The page legitimately links to
+ * the workflow editor now, so a stub that labels every link as an insights link would
+ * make the "no licensed insights route" guarantee unverifiable.
+ */
+const { routerLinkStub } = vi.hoisted(() => ({
+	routerLinkStub: {
+		props: ['to'],
+		template: `<a
+			:data-route-name="typeof to === 'string' ? to : (to && to.name) || ''"
+			:data-route-params="JSON.stringify((to && to.params) || {})"
+		><slot /></a>`,
+	},
+}));
+
 vi.mock('vue-router', () => ({
 	useRoute: () => mockRoute,
 	useRouter: vi.fn(),
-	RouterLink: {
-		props: ['to'],
-		template:
-			'<a data-test-id="insights-summary-link" :data-insight-type="to && to.params && to.params.insightType"><slot /></a>',
-	},
+	RouterLink: routerLinkStub,
 }));
 
 vi.mock('vue-chartjs', () => ({
@@ -77,7 +90,9 @@ vi.mock('@n8n/rest-api-client', async (importOriginal) => {
 	};
 });
 
-const renderComponent = createComponentRenderer(InsightsAnalystView);
+const renderComponent = createComponentRenderer(InsightsAnalystView, {
+	global: { stubs: { RouterLink: routerLinkStub } },
+});
 
 const communityModuleSettings: FrontendModuleSettings = {
 	insights: {
@@ -143,9 +158,24 @@ const mockOverview: InsightsAnalystOverview = {
 	highlights: [
 		{
 			workflowId: 'insights-demo-ap-invoice-ingestion',
-			title: 'AP invoice ingestion',
+			kind: 'impact',
+			workflowName: 'AP invoice ingestion',
 			blurb: 'Saved the most time this month',
-			metric: '3h',
+			metricValue: 8100,
+		},
+		{
+			workflowId: 'insights-demo-inventory-sync',
+			kind: 'efficiency',
+			workflowName: 'Inventory sync',
+			blurb: 'Runs constantly but saves little each time',
+			metricValue: 4,
+		},
+		{
+			workflowId: 'insights-demo-lead-enrichment',
+			kind: 'attention',
+			workflowName: 'Lead enrichment',
+			blurb: 'Failed more often than any other workflow',
+			metricValue: 12,
 		},
 	],
 	ranking: [
@@ -153,7 +183,15 @@ const mockOverview: InsightsAnalystOverview = {
 			rank: 1,
 			workflowId: 'insights-demo-ap-invoice-ingestion',
 			name: 'AP invoice ingestion',
-			timeSavedLabel: '3h',
+			department: 'Finance',
+			timeSavedMinutes: 8100,
+		},
+		{
+			rank: 2,
+			workflowId: 'insights-demo-lead-enrichment',
+			name: 'Lead enrichment',
+			department: 'Sales',
+			timeSavedMinutes: 45,
 		},
 	],
 	lowImpact: [
@@ -161,7 +199,19 @@ const mockOverview: InsightsAnalystOverview = {
 			workflowId: 'insights-demo-inventory-sync',
 			name: 'Inventory sync',
 			blurb: 'Low time saved per run',
-			timeSavedPerRunLabel: '4m',
+			timeSavedPerRunMinutes: 4,
+		},
+		{
+			workflowId: 'insights-demo-shipment-tracker',
+			name: 'Shipment tracker',
+			blurb: 'Runs hourly for a small gain',
+			timeSavedPerRunMinutes: 6,
+		},
+		{
+			workflowId: 'insights-demo-ticket-triage',
+			name: 'Ticket triage',
+			blurb: 'Barely faster than doing it by hand',
+			timeSavedPerRunMinutes: 9,
 		},
 	],
 };
@@ -231,6 +281,14 @@ const licensedInsightsRequests = () =>
 	vi
 		.mocked(makeRestApiRequest)
 		.mock.calls.filter((call) => LICENSED_INSIGHTS_PATHS.has(String(call[2])));
+
+const licensedInsightsLinks = (container: Element) =>
+	Array.from(container.querySelectorAll('a')).filter(
+		(anchor) =>
+			anchor.getAttribute('data-route-name') === VIEWS.INSIGHTS ||
+			(anchor.getAttribute('data-route-params') ?? '').includes('insightType') ||
+			/\/insights\//.test(anchor.getAttribute('href') ?? ''),
+	);
 
 const mockAnalystRequests = (chat: InsightsAnalystChatResponse = fallbackChat) => {
 	vi.mocked(makeRestApiRequest).mockImplementation(async (_ctx, method, path) => {
@@ -334,7 +392,7 @@ describe('InsightsAnalystView', () => {
 		await waitFor(() => {
 			expect(screen.getByTestId('insights-summary-tabs')).toBeInTheDocument();
 			expect(screen.getByTestId('insights-chart-total')).toBeInTheDocument();
-			expect(screen.getAllByText('AP invoice ingestion').length).toBeGreaterThan(0);
+			expect(screen.getByText('AP invoice ingestion (Finance)')).toBeInTheDocument();
 			expect(screen.getAllByText('Inventory sync').length).toBeGreaterThan(0);
 		});
 
@@ -398,10 +456,110 @@ describe('InsightsAnalystView', () => {
 			expect(screen.getByTestId('insights-summary-tab-total')).toBeInTheDocument();
 		});
 
-		expect(screen.queryAllByTestId('insights-summary-link')).toHaveLength(0);
 		expect(container.querySelector('a[href*="timeSaved"]')).toBeNull();
-		expect(container.querySelector('a[href*="insights"]')).toBeNull();
+		expect(licensedInsightsLinks(container)).toEqual([]);
 		expect(mockRoute.params).toEqual({});
+	});
+
+	it('opening a workflow from a highlight or a ranking row targets the workflow editor', async () => {
+		const { container } = renderComponent();
+
+		await waitFor(() => {
+			expect(screen.getByTestId('insights-analyst-highlight-impact')).toBeInTheDocument();
+			expect(screen.getByText('AP invoice ingestion (Finance)')).toBeInTheDocument();
+		});
+
+		const highlightLinks = within(screen.getByTestId('insights-analyst-highlights')).getAllByTestId(
+			'insights-analyst-workflow-link',
+		);
+		const rankingLinks = within(screen.getByTestId('insights-analyst-ranking')).getAllByTestId(
+			'insights-analyst-workflow-link',
+		);
+
+		expect(highlightLinks).toHaveLength(mockOverview.highlights.length);
+		expect(rankingLinks).toHaveLength(mockOverview.ranking.length);
+
+		[...highlightLinks, ...rankingLinks].forEach((link) => {
+			expect(link).toHaveAttribute('data-route-name', VIEWS.WORKFLOW);
+			expect(link.getAttribute('data-route-params')).toContain('workflowId');
+		});
+
+		expect(licensedInsightsLinks(container)).toEqual([]);
+	});
+
+	it('header shows the analyst subtitle next to the title, with the range picker alongside', async () => {
+		renderComponent();
+
+		await waitFor(() => {
+			expect(screen.getByTestId('insights-chart-total')).toBeInTheDocument();
+		});
+
+		const heading = screen.getByRole('heading', { name: 'Insights Analyst' });
+		const subtitle = screen.getByText(
+			'Demo-ready operational insights with seeded workflows, executions, and analyst answers.',
+		);
+
+		expect(heading.parentElement).toContainElement(subtitle);
+
+		const header = heading.closest('header');
+		expect(header).not.toBeNull();
+		expect(header).toContainElement(
+			screen.getByRole('button', { name: formatDateRange(thirtyDayRange()) }),
+		);
+	});
+
+	it('dashboard stacks the highlights above the chart, then the ranking and low impact', async () => {
+		renderComponent();
+
+		await waitFor(() => {
+			expect(screen.getByTestId('insights-chart-total')).toBeInTheDocument();
+		});
+
+		const dashboard = screen.getByTestId('insights-analyst-dashboard');
+		const sectionsInOrder = [
+			screen.getByTestId('insights-analyst-highlights'),
+			screen.getByTestId('insights-chart-total'),
+			screen.getByTestId('insights-analyst-ranking'),
+			screen.getByTestId('insights-analyst-low-impact'),
+		];
+
+		sectionsInOrder.forEach((section) => expect(dashboard).toContainElement(section));
+
+		sectionsInOrder.slice(1).forEach((section, index) => {
+			expect(
+				Boolean(
+					sectionsInOrder[index].compareDocumentPosition(section) &
+						Node.DOCUMENT_POSITION_FOLLOWING,
+				),
+			).toBe(true);
+		});
+	});
+
+	it('highlight and low impact metrics are worded for their own units', async () => {
+		renderComponent();
+
+		await waitFor(() => {
+			expect(screen.getByTestId('insights-analyst-highlight-impact')).toBeInTheDocument();
+		});
+
+		const impact = screen.getByTestId('insights-analyst-highlight-impact');
+		expect(impact).toHaveTextContent('Highest automation impact');
+		expect(impact).toHaveTextContent(formatInsightsTimeSavedLabel(8100));
+		expect(impact).not.toHaveTextContent('8100');
+
+		const efficiency = screen.getByTestId('insights-analyst-highlight-efficiency');
+		expect(efficiency).toHaveTextContent(`${formatInsightsTimeSavedLabel(4)}/run`);
+
+		const attention = screen.getByTestId('insights-analyst-highlight-attention');
+		expect(attention).toHaveTextContent('Needs attention');
+		expect(attention).toHaveTextContent('12 failed executions');
+
+		const ranking = screen.getByTestId('insights-analyst-ranking');
+		expect(ranking).toHaveTextContent(`${formatInsightsTimeSavedLabel(8100)} saved`);
+
+		const lowImpact = screen.getByTestId('insights-analyst-low-impact');
+		expect(within(lowImpact).getByText('Ticket triage')).toBeInTheDocument();
+		expect(lowImpact).toHaveTextContent(`${formatInsightsTimeSavedLabel(9)}/run`);
 	});
 
 	it('empty overview still shows the page without licensed insights requests', async () => {

@@ -18,14 +18,18 @@ function insightsParentRoute() {
 }
 
 function stubInsightsRoutes(): RouteRecordRaw[] {
-	return (InsightsModule.routes ?? []).map((route) => ({
-		...route,
-		component: { template: '<router-view />' },
-		children: (route.children ?? []).map((child) => ({
-			...child,
-			component: { template: '<div data-test-id="matched-insights-child" />' },
-		})),
-	}));
+	// Swapping in stub components loses the discriminant of the RouteRecordRaw union.
+	return (InsightsModule.routes ?? []).map(
+		(route) =>
+			({
+				...route,
+				component: { template: '<router-view />' },
+				children: (route.children ?? []).map((child) => ({
+					...child,
+					component: { template: '<div data-test-id="matched-insights-child" />' },
+				})),
+			}) as RouteRecordRaw,
+	);
 }
 
 async function openInsightsPath(path: string) {
@@ -67,8 +71,10 @@ describe('Insights analyst routes', () => {
 		expect(JSON.stringify({ meta: parent.meta, childMeta: analystChild?.meta })).not.toMatch(
 			/N8N_DEMO|demoFeature|DEMO_INSIGHTS/i,
 		);
-		expect((VIEWS as Record<string, string>).INSIGHTS_ANALYST).toBe('InsightsAnalyst');
+		// Compared against the literal rather than the constant, so renaming the
+		// constant fails here instead of quietly agreeing with itself.
 		expect(analystChild?.name).toBe('InsightsAnalyst');
+		expect(VIEWS.INSIGHTS_ANALYST).toBe('InsightsAnalyst');
 	});
 
 	it('/insights/analyst is registered before :insightType? and is not captured as insightType', async () => {

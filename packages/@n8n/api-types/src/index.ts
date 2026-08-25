@@ -175,6 +175,8 @@ export {
 	type InsightsAnalystChatRequest,
 	insightsAnalystChatResponseSchema,
 	type InsightsAnalystChatResponse,
+	insightsAnalystHighlightKindSchema,
+	type InsightsAnalystHighlightKind,
 	insightsAnalystHighlightSchema,
 	type InsightsAnalystHighlight,
 	insightsAnalystRankingRowSchema,

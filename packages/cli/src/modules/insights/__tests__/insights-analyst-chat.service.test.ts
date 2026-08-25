@@ -12,7 +12,7 @@ const REJECTED_OPUS_DEFAULT = 'claude-opus-4-7-20260101';
 const SONNET_DEFAULT = 'claude-sonnet-4-5-20250929';
 
 const REAL_WORKFLOW_ID = 'insights-demo-ap-invoice-ingestion';
-const OTHER_REAL_WORKFLOW_ID = 'insights-demo-inventory-sync';
+const OTHER_REAL_WORKFLOW_ID = 'insights-demo-standup-digest';
 const INVENTED_WORKFLOW_ID = 'invented-workflow-from-the-model';
 
 const demoOverview: InsightsAnalystOverview = {
@@ -21,15 +21,16 @@ const demoOverview: InsightsAnalystOverview = {
 		failed: { deviation: 6, unit: 'count', value: 10 },
 		failureRate: { deviation: 0.133, unit: 'ratio', value: 0.333 },
 		averageRunTime: { deviation: null, unit: 'millisecond', value: 10 },
-		timeSaved: { deviation: 5, unit: 'minute', value: 180 },
+		timeSaved: { deviation: 5, unit: 'minute', value: 8100 },
 	},
 	byTime: [],
 	highlights: [
 		{
 			workflowId: REAL_WORKFLOW_ID,
-			title: 'AP invoice ingestion',
-			blurb: 'Saved the most time this month',
-			metric: '180 min',
+			kind: 'impact',
+			workflowName: 'AP invoice ingestion',
+			blurb: 'Files invoices from the shared mailbox for approval.',
+			metricValue: 8100,
 		},
 	],
 	ranking: [
@@ -37,15 +38,16 @@ const demoOverview: InsightsAnalystOverview = {
 			rank: 1,
 			workflowId: REAL_WORKFLOW_ID,
 			name: 'AP invoice ingestion',
-			timeSavedLabel: '180 min',
+			department: 'Finance',
+			timeSavedMinutes: 8100,
 		},
 	],
 	lowImpact: [
 		{
 			workflowId: OTHER_REAL_WORKFLOW_ID,
-			name: 'Inventory sync',
-			blurb: 'Low time saved per run',
-			timeSavedPerRunLabel: '4 min',
+			name: 'Daily standup digest',
+			blurb: 'Posts yesterday ticket movement into the team channel.',
+			timeSavedPerRunMinutes: 7,
 		},
 	],
 };
@@ -58,7 +60,7 @@ const modelAnswer = {
 		{
 			workflowId: REAL_WORKFLOW_ID,
 			label: 'AP invoice ingestion',
-			metric: '180 min',
+			metric: '135 hr',
 		},
 		{
 			workflowId: INVENTED_WORKFLOW_ID,
@@ -70,7 +72,7 @@ const modelAnswer = {
 
 jest.mock('ai', () => ({
 	__esModule: true,
-	generateText: jest.fn(),
+	generateObject: jest.fn(),
 }));
 
 jest.mock('@ai-sdk/anthropic', () => ({
@@ -81,8 +83,8 @@ jest.mock('@ai-sdk/anthropic', () => ({
 const originalAnalystKey = process.env.N8N_INSIGHTS_ANALYST_ANTHROPIC_API_KEY;
 const originalAnalystModel = process.env.N8N_INSIGHTS_ANALYST_MODEL;
 
-function generateTextMock() {
-	return jest.requireMock<{ generateText: jest.Mock }>('ai').generateText;
+function generateObjectMock() {
+	return jest.requireMock<{ generateObject: jest.Mock }>('ai').generateObject;
 }
 
 function createAnthropicMock() {
@@ -119,7 +121,7 @@ function freshInsightsConfig(overrides?: { apiKey?: string; model?: string }) {
 
 function loggedCalls(logger: ReturnType<typeof mockLogger>) {
 	const scoped = logger.scoped('insights');
-	const methods = ['error', 'warn', 'info', 'debug', 'verbose'] as const;
+	const methods = ['error', 'warn', 'info', 'debug'] as const;
 
 	return [logger, scoped].flatMap((target) =>
 		methods.flatMap((method) => {
@@ -130,7 +132,10 @@ function loggedCalls(logger: ReturnType<typeof mockLogger>) {
 }
 
 function expectFallback(response: InsightsAnalystChatResponse) {
-	expect(insightsAnalystChatResponseSchema.safeParse(response).success).toBe(true);
+	const parsed = insightsAnalystChatResponseSchema.safeParse(response);
+	// Report the offending field rather than a bare `false`.
+	expect(parsed.error?.issues ?? []).toEqual([]);
+	expect(parsed.success).toBe(true);
 	expect(response.mode).toBe('fallback');
 	expect(response.answer.length).toBeGreaterThan(0);
 	expect(response.citations.every((citation) => knownWorkflowIds.has(citation.workflowId))).toBe(
@@ -175,7 +180,7 @@ describe('InsightsAnalystChatService', () => {
 		jest.clearAllMocks();
 		seedService.ensureSeeded.mockResolvedValue(undefined);
 		overviewService.getOverview.mockResolvedValue(demoOverview);
-		generateTextMock().mockResolvedValue({ text: JSON.stringify(modelAnswer) });
+		generateObjectMock().mockResolvedValue({ object: modelAnswer });
 	});
 
 	async function createService(overrides?: { apiKey?: string; model?: string }) {
@@ -194,13 +199,13 @@ describe('InsightsAnalystChatService', () => {
 		});
 
 		expect(seedService.ensureSeeded).toHaveBeenCalled();
-		expect(generateTextMock()).not.toHaveBeenCalled();
+		expect(generateObjectMock()).not.toHaveBeenCalled();
 		expect(createAnthropicMock()).not.toHaveBeenCalled();
 		expectFallback(response);
 	});
 
 	it('returns a fallback answer when the Anthropic provider call throws', async () => {
-		generateTextMock().mockRejectedValue(new Error('anthropic unavailable'));
+		generateObjectMock().mockRejectedValue(new Error('anthropic unavailable'));
 		const service = await createService({ apiKey: ANTHROPIC_KEY });
 
 		const response = await service.chat({ question: 'Which workflow saved the most time?' });
@@ -211,8 +216,8 @@ describe('InsightsAnalystChatService', () => {
 		expect(JSON.stringify(loggedCalls(logger))).not.toContain(ANTHROPIC_KEY);
 	});
 
-	it('returns a fallback answer when the model returns malformed JSON', async () => {
-		generateTextMock().mockResolvedValue({ text: 'not-json{{{' });
+	it('returns a fallback answer when the model reply does not fit the answer schema', async () => {
+		generateObjectMock().mockRejectedValue(new Error('response did not match schema'));
 		const service = await createService({ apiKey: ANTHROPIC_KEY });
 
 		const response = await service.chat({ question: 'Which workflow saved the most time?' });
@@ -221,13 +226,102 @@ describe('InsightsAnalystChatService', () => {
 		expect(JSON.stringify(loggedCalls(logger))).not.toContain(ANTHROPIC_KEY);
 	});
 
+	it('reads the top ranked workflow back in whole hours when it saved more than an hour', async () => {
+		const service = await createService();
+
+		const response = await service.chat({ question: 'Which workflow saved the most time?' });
+
+		expect(response.citations).toEqual([
+			{
+				workflowId: REAL_WORKFLOW_ID,
+				label: 'AP invoice ingestion',
+				metric: '135 hr',
+			},
+		]);
+		expectFallback(response);
+	});
+
+	it('reads the top ranked workflow back in minutes when it saved under an hour', async () => {
+		overviewService.getOverview.mockResolvedValue({
+			...demoOverview,
+			ranking: [
+				{
+					rank: 1,
+					workflowId: OTHER_REAL_WORKFLOW_ID,
+					name: 'Daily standup digest',
+					department: 'Operations',
+					timeSavedMinutes: 45,
+				},
+			],
+		});
+		const service = await createService();
+
+		const response = await service.chat({ question: 'Which workflow saved the most time?' });
+
+		expect(response.citations[0]?.metric).toBe('45 min');
+		expectFallback(response);
+	});
+
+	it('cites the leading highlight by workflow name when the ranking is empty', async () => {
+		overviewService.getOverview.mockResolvedValue({
+			...demoOverview,
+			ranking: [],
+			highlights: [
+				{
+					workflowId: OTHER_REAL_WORKFLOW_ID,
+					kind: 'impact',
+					workflowName: 'Daily standup digest',
+					blurb: 'Posts yesterday ticket movement into the team channel.',
+					metricValue: 45,
+				},
+			],
+		});
+		const service = await createService();
+
+		const response = await service.chat({ question: 'Which workflow saved the most time?' });
+
+		expect(response.citations).toEqual([
+			{
+				workflowId: OTHER_REAL_WORKFLOW_ID,
+				label: 'Daily standup digest',
+				metric: '45 min',
+			},
+		]);
+		expect(response.answer).toContain('Daily standup digest');
+		expectFallback(response);
+	});
+
+	it('never cites the attention card, whose metric counts failures rather than minutes', async () => {
+		overviewService.getOverview.mockResolvedValue({
+			...demoOverview,
+			ranking: [],
+			highlights: [
+				{
+					workflowId: OTHER_REAL_WORKFLOW_ID,
+					kind: 'attention',
+					workflowName: 'Delayed shipment triage',
+					blurb: 'Chases carriers when a shipment misses its promised window.',
+					metricValue: 60,
+				},
+			],
+		});
+		const service = await createService();
+
+		const response = await service.chat({ question: 'Which workflow saved the most time?' });
+
+		// 60 failures formatted as time would read "1 hr saved" on the rail.
+		expect(response.citations).toEqual([]);
+		expect(response.answer).not.toContain('Delayed shipment triage');
+		expectFallback(response);
+	});
+
 	it('returns an llm answer that keeps only real workflow citations', async () => {
 		const service = await createService({ apiKey: ANTHROPIC_KEY });
 
 		const response = await service.chat({ question: 'Which workflow saved the most time?' });
 
 		expect(seedService.ensureSeeded).toHaveBeenCalled();
-		expect(generateTextMock()).toHaveBeenCalled();
+		expect(generateObjectMock()).toHaveBeenCalled();
 		expect(insightsAnalystChatResponseSchema.safeParse(response).success).toBe(true);
 		expect(response.mode).toBe('llm');
 		expect(response.answer.length).toBeGreaterThan(0);

@@ -45,6 +45,8 @@ const MANUAL_TRIGGER_NODE = {
 export class InsightsAnalystSeedService {
 	private inFlight: Promise<void> | undefined;
 
+	private seeded = false;
+
 	constructor(
 		private readonly ownershipService: OwnershipService,
 		private readonly userRepository: UserRepository,
@@ -60,7 +62,17 @@ export class InsightsAnalystSeedService {
 		this.logger = this.logger.scoped('insights');
 	}
 
+	/**
+	 * `seeded` is set only once the workspace is actually written. Without it every
+	 * overview and chat request deleted and rewrote all 1200 demo rows, which also
+	 * reverted any edit an operator made to a demo workflow. It stays false when the
+	 * instance has no owner yet, so a request after setup completes still seeds.
+	 */
 	async ensureSeeded() {
+		if (this.seeded) {
+			return;
+		}
+
 		this.inFlight ??= this.seedDemoWorkspace();
 		try {
 			await this.inFlight;
@@ -86,6 +98,8 @@ export class InsightsAnalystSeedService {
 		await this.ensureDemoProject(owner);
 		await this.ensureDemoWorkflows(owner);
 		await this.rewriteOwnedInsights();
+
+		this.seeded = true;
 	}
 
 	/**
@@ -133,7 +147,7 @@ export class InsightsAnalystSeedService {
 			(await this.workflowRepository.find({
 				where: { id: Like(`${INSIGHTS_DEMO_WORKFLOW_ID_PREFIX}%`) },
 			})) ?? [];
-		const existingIds = new Set(existing.map((workflow) => workflow.id));
+		const existingById = new Map(existing.map((workflow) => [workflow.id, workflow]));
 		const catalogIds = new Set<string>(INSIGHTS_DEMO_WORKFLOW_IDS);
 
 		for (const workflow of existing) {
@@ -143,7 +157,21 @@ export class InsightsAnalystSeedService {
 		}
 
 		for (const spec of INSIGHTS_DEMO_WORKFLOWS) {
-			if (existingIds.has(spec.id)) {
+			const alreadySeeded = existingById.get(spec.id);
+
+			if (alreadySeeded) {
+				/**
+				 * Renaming a workflow in the catalog has to reach the workflow row too.
+				 * Insights metadata is rewritten on every seed, so without this the page
+				 * shows the new name while "Open workflow" opens one still called the old one.
+				 */
+				await this.workflowRepository.update(spec.id, {
+					name: spec.name,
+					settings: {
+						...alreadySeeded.settings,
+						timeSavedPerExecution: spec.timeSavedPerExecution,
+					},
+				});
 				continue;
 			}
 
@@ -274,9 +302,26 @@ export class InsightsAnalystSeedService {
 		);
 	}
 
+	/**
+	 * Volume comes from the workflow's own daily rate so the 30-day totals match the
+	 * analyst design. The wave only moves each day within a third of that rate, and it
+	 * cycles every 5 days, so the chart has visible variation while the window total
+	 * still averages out to the configured rate.
+	 */
 	private dailyCounts(spec: InsightsDemoWorkflowSpec, workflowIndex: number, dayOffset: number) {
-		const success = 6 + ((workflowIndex * 3 + dayOffset) % 12);
-		const failure = (workflowIndex + dayOffset) % 4;
+		const swing = Math.round(spec.dailyExecutions / 3);
+		const wave = ((workflowIndex * 3 + dayOffset) % 5) - 2;
+		const success = Math.max(1, spec.dailyExecutions + Math.round((wave * swing) / 2));
+		/**
+		 * Alternating plus and minus one rather than plus one on every other day, which
+		 * added half a failure per day and pushed the 30-day totals 50 percent above the
+		 * rate the catalog declares.
+		 */
+		const failure =
+			spec.dailyFailures === 0
+				? 0
+				: Math.max(0, spec.dailyFailures + ((workflowIndex + dayOffset) % 2 === 0 ? 1 : -1));
+
 		return {
 			success,
 			failure,

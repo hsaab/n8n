@@ -24,35 +24,62 @@ const populatedSummary: InsightsSummary = {
 	timeSaved: { deviation: 5, unit: 'minute', value: 188 },
 };
 
-const workflowRows: InsightsByWorkflow = {
-	count: 2,
+const AP_INVOICE_ID = 'insights-demo-ap-invoice-ingestion';
+const LEAD_ENRICHMENT_ID = 'insights-demo-lead-enrichment';
+const STANDUP_DIGEST_ID = 'insights-demo-standup-digest';
+const DELAYED_SHIPMENT_ID = 'insights-demo-delayed-shipment-triage';
+const RETIRED_WORKFLOW_ID = 'insights-demo-retired-quarterly-report';
+
+function workflowRow(
+	workflowId: string,
+	workflowName: string,
+	counts: { succeeded: number; failed: number; timeSaved: number },
+): InsightsByWorkflow['data'][number] {
+	const total = counts.succeeded + counts.failed;
+
+	return {
+		workflowId,
+		workflowName,
+		projectId: INSIGHTS_DEMO_PROJECT_ID,
+		projectName: 'Demo Operations',
+		total,
+		succeeded: counts.succeeded,
+		failed: counts.failed,
+		failureRate: total === 0 ? 0 : counts.failed / total,
+		runTime: counts.succeeded * 1000,
+		averageRunTime: total === 0 ? 0 : (counts.succeeded * 1000) / total,
+		timeSaved: counts.timeSaved,
+	};
+}
+
+/**
+ * Deliberately unsorted, so the ranking order proves the service sorts rather
+ * than trusting whatever order the insights query returned. Time saved per run
+ * is a clean integer for every row: digest 7, enrichment 8, shipment 9, invoice 10.
+ */
+const demoWorkflowRows: InsightsByWorkflow = {
+	count: 4,
 	data: [
-		{
-			workflowId: 'insights-demo-ap-invoice-ingestion',
-			workflowName: 'AP invoice ingestion',
-			projectId: INSIGHTS_DEMO_PROJECT_ID,
-			projectName: 'Demo Operations',
-			total: 100,
-			succeeded: 90,
-			failed: 10,
-			failureRate: 0.1,
-			runTime: 10000,
-			averageRunTime: 100,
-			timeSaved: 180,
-		},
-		{
-			workflowId: 'insights-demo-inventory-sync',
-			workflowName: 'Inventory sync',
-			projectId: INSIGHTS_DEMO_PROJECT_ID,
-			projectName: 'Demo Operations',
-			total: 40,
-			succeeded: 40,
-			failed: 0,
-			failureRate: 0,
-			runTime: 2000,
-			averageRunTime: 50,
-			timeSaved: 8,
-		},
+		workflowRow(STANDUP_DIGEST_ID, 'Daily standup digest', {
+			succeeded: 240,
+			failed: 2,
+			timeSaved: 1680,
+		}),
+		workflowRow(AP_INVOICE_ID, 'AP invoice ingestion', {
+			succeeded: 540,
+			failed: 12,
+			timeSaved: 5400,
+		}),
+		workflowRow(DELAYED_SHIPMENT_ID, 'Delayed shipment triage', {
+			succeeded: 150,
+			failed: 60,
+			timeSaved: 1350,
+		}),
+		workflowRow(LEAD_ENRICHMENT_ID, 'Lead enrichment & scoring', {
+			succeeded: 450,
+			failed: 30,
+			timeSaved: 3600,
+		}),
 	],
 };
 
@@ -120,7 +147,7 @@ describe('InsightsAnalystOverviewService', () => {
 
 	it('defaults the overview window to the last 30 days on the demo project', async () => {
 		insightsService.getInsightsSummary.mockResolvedValue(populatedSummary);
-		insightsService.getInsightsByWorkflow.mockResolvedValue(workflowRows);
+		insightsService.getInsightsByWorkflow.mockResolvedValue(demoWorkflowRows);
 		insightsService.getInsightsByTime.mockResolvedValue(thirtyDaySeries);
 
 		const result = await service.getOverview();
@@ -217,7 +244,7 @@ describe('InsightsAnalystOverviewService', () => {
 			order.push('read');
 			return populatedSummary;
 		});
-		insightsService.getInsightsByWorkflow.mockResolvedValue(workflowRows);
+		insightsService.getInsightsByWorkflow.mockResolvedValue(demoWorkflowRows);
 		insightsService.getInsightsByTime.mockResolvedValue(thirtyDaySeries);
 
 		const result = await service.getOverview();
@@ -228,7 +255,7 @@ describe('InsightsAnalystOverviewService', () => {
 		expect(result.ranking.length).toBeGreaterThan(0);
 		expect(
 			result.ranking.every((row) =>
-				workflowRows.data.some((workflow) => workflow.workflowId === row.workflowId),
+				demoWorkflowRows.data.some((workflow) => workflow.workflowId === row.workflowId),
 			),
 		).toBe(true);
 	});
@@ -238,7 +265,7 @@ describe('InsightsAnalystOverviewService', () => {
 		const endDate = DateTime.now().toJSDate();
 
 		insightsService.getInsightsSummary.mockResolvedValue(populatedSummary);
-		insightsService.getInsightsByWorkflow.mockResolvedValue(workflowRows);
+		insightsService.getInsightsByWorkflow.mockResolvedValue(demoWorkflowRows);
 		insightsService.getInsightsByTime.mockResolvedValue(thirtyDaySeries);
 
 		const result = await service.getOverview({ startDate, endDate });
@@ -246,5 +273,124 @@ describe('InsightsAnalystOverviewService', () => {
 		expect(insightsService.validateDateFiltersLicense).not.toHaveBeenCalled();
 		expect(insightsAnalystOverviewSchema.safeParse(result).success).toBe(true);
 		expect(result.byTime).toEqual(thirtyDaySeries);
+	});
+
+	it('shows three highlight cards in impact, efficiency and attention order', async () => {
+		insightsService.getInsightsByWorkflow.mockResolvedValue(demoWorkflowRows);
+
+		const { highlights } = await service.getOverview();
+
+		expect(highlights.map((highlight) => highlight.kind)).toEqual([
+			'impact',
+			'efficiency',
+			'attention',
+		]);
+		expect(highlights.map((highlight) => highlight.workflowId)).toEqual([
+			AP_INVOICE_ID,
+			STANDUP_DIGEST_ID,
+			DELAYED_SHIPMENT_ID,
+		]);
+		// Total minutes saved, then minutes saved per successful run, then failed runs.
+		expect(highlights.map((highlight) => highlight.metricValue)).toEqual([5400, 7, 60]);
+	});
+
+	it('names the workflow on every highlight card and describes it from the demo catalog', async () => {
+		insightsService.getInsightsByWorkflow.mockResolvedValue(demoWorkflowRows);
+
+		const { highlights, lowImpact } = await service.getOverview();
+
+		expect(highlights.map((highlight) => highlight.workflowName)).toEqual([
+			'AP invoice ingestion',
+			'Daily standup digest',
+			'Delayed shipment triage',
+		]);
+		expect(highlights.every((highlight) => highlight.blurb.length > 0)).toBe(true);
+
+		// The efficiency card and the first low impact row are the same workflow, so a
+		// catalog-sourced blurb reads the same in both places.
+		const efficiency = highlights[1];
+		const sameWorkflowRow = lowImpact.find((row) => row.workflowId === efficiency.workflowId);
+		expect(sameWorkflowRow?.blurb).toBe(efficiency.blurb);
+	});
+
+	it('ranks every demo workflow by time saved and tags it with the owning department', async () => {
+		insightsService.getInsightsByWorkflow.mockResolvedValue(demoWorkflowRows);
+
+		const { ranking } = await service.getOverview();
+
+		expect(ranking).toEqual([
+			expect.objectContaining({
+				rank: 1,
+				workflowId: AP_INVOICE_ID,
+				department: 'Finance',
+				timeSavedMinutes: 5400,
+			}),
+			expect.objectContaining({
+				rank: 2,
+				workflowId: LEAD_ENRICHMENT_ID,
+				department: 'Revenue Ops',
+				timeSavedMinutes: 3600,
+			}),
+			expect.objectContaining({
+				rank: 3,
+				workflowId: STANDUP_DIGEST_ID,
+				department: 'Operations',
+				timeSavedMinutes: 1680,
+			}),
+			expect.objectContaining({
+				rank: 4,
+				workflowId: DELAYED_SHIPMENT_ID,
+				department: 'Operations',
+				timeSavedMinutes: 1350,
+			}),
+		]);
+	});
+
+	it('lists the three workflows that save the least time per run, lowest first', async () => {
+		insightsService.getInsightsByWorkflow.mockResolvedValue(demoWorkflowRows);
+
+		const { lowImpact } = await service.getOverview();
+
+		expect(lowImpact.map((row) => row.workflowId)).toEqual([
+			STANDUP_DIGEST_ID,
+			LEAD_ENRICHMENT_ID,
+			DELAYED_SHIPMENT_ID,
+		]);
+		expect(lowImpact.map((row) => row.timeSavedPerRunMinutes)).toEqual([7, 8, 9]);
+		expect(lowImpact.some((row) => row.workflowId === AP_INVOICE_ID)).toBe(false);
+	});
+
+	it('still lists three low impact workflows when they all save well over two minutes per run', async () => {
+		insightsService.getInsightsByWorkflow.mockResolvedValue(demoWorkflowRows);
+
+		const { lowImpact } = await service.getOverview();
+
+		// Every seeded workflow saves more than two minutes per run, so a minimum-savings
+		// filter would empty this list and the analyst page would render nothing here.
+		expect(lowImpact).toHaveLength(3);
+		expect(lowImpact.every((row) => row.timeSavedPerRunMinutes > 2)).toBe(true);
+	});
+
+	it('renders a workflow missing from the demo catalog without a department or blurb', async () => {
+		insightsService.getInsightsByWorkflow.mockResolvedValue({
+			count: 1,
+			data: [
+				workflowRow(RETIRED_WORKFLOW_ID, 'Quarterly board report', {
+					succeeded: 20,
+					failed: 1,
+					timeSaved: 120,
+				}),
+			],
+		});
+
+		const { highlights, ranking, lowImpact } = await service.getOverview();
+
+		expect(highlights).toHaveLength(3);
+		expect(highlights.every((highlight) => highlight.workflowId === RETIRED_WORKFLOW_ID)).toBe(
+			true,
+		);
+		expect(highlights.map((highlight) => highlight.blurb)).toEqual(['', '', '']);
+		expect(ranking[0].department).toBe('');
+		expect(lowImpact[0].blurb).toBe('');
 	});
 });

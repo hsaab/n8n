@@ -11,12 +11,17 @@ export const insightsAnalystCitationSchema = z
 	.strict();
 export type InsightsAnalystCitation = z.infer<typeof insightsAnalystCitationSchema>;
 
-export const insightsAnalystChatRequestSchema = z
-	.object({
-		question: z.string(),
-		suggestedPromptId: z.string().optional(),
-	})
-	.strict();
+/**
+ * Shared with `InsightsAnalystChatRequestDto`. The controller registry only forwards
+ * a `@Body` argument whose declared type has `safeParse`, so the route needs the DTO
+ * class while the frontend client keeps using the schema.
+ */
+export const insightsAnalystChatRequestShape = {
+	question: z.string().min(1),
+	suggestedPromptId: z.string().optional(),
+};
+
+export const insightsAnalystChatRequestSchema = z.object(insightsAnalystChatRequestShape).strict();
 export type InsightsAnalystChatRequest = z.infer<typeof insightsAnalystChatRequestSchema>;
 
 export const insightsAnalystChatResponseSchema = z
@@ -28,12 +33,21 @@ export const insightsAnalystChatResponseSchema = z
 	.strict();
 export type InsightsAnalystChatResponse = z.infer<typeof insightsAnalystChatResponseSchema>;
 
+/**
+ * Which of the three analyst cards a highlight fills. It also decides how
+ * `metricValue` is read: total minutes saved for `impact`, minutes saved per run
+ * for `efficiency`, and a failed execution count for `attention`.
+ */
+export const insightsAnalystHighlightKindSchema = z.enum(['impact', 'efficiency', 'attention']);
+export type InsightsAnalystHighlightKind = z.infer<typeof insightsAnalystHighlightKindSchema>;
+
 export const insightsAnalystHighlightSchema = z
 	.object({
 		workflowId: z.string(),
-		title: z.string(),
+		kind: insightsAnalystHighlightKindSchema,
+		workflowName: z.string(),
 		blurb: z.string(),
-		metric: z.string(),
+		metricValue: z.number(),
 	})
 	.strict();
 export type InsightsAnalystHighlight = z.infer<typeof insightsAnalystHighlightSchema>;
@@ -43,7 +57,8 @@ export const insightsAnalystRankingRowSchema = z
 		rank: z.number(),
 		workflowId: z.string(),
 		name: z.string(),
-		timeSavedLabel: z.string(),
+		department: z.string(),
+		timeSavedMinutes: z.number(),
 	})
 	.strict();
 export type InsightsAnalystRankingRow = z.infer<typeof insightsAnalystRankingRowSchema>;
@@ -53,7 +68,7 @@ export const insightsAnalystLowImpactSchema = z
 		workflowId: z.string(),
 		name: z.string(),
 		blurb: z.string(),
-		timeSavedPerRunLabel: z.string(),
+		timeSavedPerRunMinutes: z.number(),
 	})
 	.strict();
 export type InsightsAnalystLowImpact = z.infer<typeof insightsAnalystLowImpactSchema>;

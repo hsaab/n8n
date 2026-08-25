@@ -55,7 +55,7 @@ async function submitSuggested(id: string, labelKey: BaseTextKey) {
 <template>
 	<aside :class="$style.rail" data-test-id="insights-analyst-chat-rail">
 		<header :class="$style.header">
-			<N8nHeading tag="h3" size="medium" bold>
+			<N8nHeading tag="h3" size="small" bold>
 				{{ i18n.baseText('insights.analyst.chat.heading') }}
 			</N8nHeading>
 			<N8nText size="small" color="text-light">
@@ -131,7 +131,10 @@ async function submitSuggested(id: string, labelKey: BaseTextKey) {
 </template>
 
 <style lang="scss" module>
+@use '@/app/css/variables' as vars;
 @use '@/features/ai/shared/styles/prompt-suggestion-buttons' as suggestions;
+
+$rail-height: 576px;
 
 .rail {
 	display: flex;
@@ -189,7 +192,7 @@ async function submitSuggested(id: string, labelKey: BaseTextKey) {
 	padding: var(--spacing--sm);
 	border: var(--border);
 	border-radius: var(--radius--lg);
-	background: var(--color--background);
+	background: var(--background--subtle);
 }
 
 .composer {
@@ -211,5 +214,17 @@ async function submitSuggested(id: string, labelKey: BaseTextKey) {
 
 .pill {
 	@include suggestions.prompt-suggestion-button;
+}
+
+/**
+ * Beside the dashboard the rail is a fixed panel that scrolls its own transcript,
+ * so a long conversation cannot stretch the page past the charts. Stacked under the
+ * dashboard on a narrow screen it grows with its content instead.
+ */
+@media (min-width: vars.$breakpoint-sm) {
+	.rail {
+		height: $rail-height;
+		max-height: calc(100vh - var(--spacing--3xl));
+	}
 }
 </style>
