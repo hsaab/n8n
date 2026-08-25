@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import InsightsAnalystChatRail from '@/features/execution/insights/components/analyst/InsightsAnalystChatRail.vue';
 import InsightsAnalystHighlights from '@/features/execution/insights/components/analyst/InsightsAnalystHighlights.vue';
 import InsightsAnalystLowImpact from '@/features/execution/insights/components/analyst/InsightsAnalystLowImpact.vue';
 import InsightsAnalystRanking from '@/features/execution/insights/components/analyst/InsightsAnalystRanking.vue';
@@ -70,45 +71,53 @@ onMounted(() => {
 
 <template>
 	<div :class="$style.page">
-		<div :class="$style.dashboard">
-			<N8nHeading bold tag="h2" size="xlarge">
-				{{ i18n.baseText('insights.analyst.heading') }}
-			</N8nHeading>
+		<div :class="$style.layout" data-test-id="insights-analyst-layout">
+			<div :class="$style.dashboard" data-test-id="insights-analyst-dashboard">
+				<N8nHeading bold tag="h2" size="xlarge">
+					{{ i18n.baseText('insights.analyst.heading') }}
+				</N8nHeading>
 
-			<div :class="$style.toolbar">
-				<InsightsDataRangePicker
-					v-model="range"
-					:max-value="maximumValue"
-					:min-value="minimumValue"
-					:presets
+				<div :class="$style.toolbar">
+					<InsightsDataRangePicker
+						v-model="range"
+						:max-value="maximumValue"
+						:min-value="minimumValue"
+						:presets
+					/>
+				</div>
+
+				<InsightsSummary
+					:summary="summaryDisplay"
+					:start-date="range.start"
+					:end-date="range.end"
+					link-variant="static"
 				/>
+
+				<div :class="$style.chart">
+					<InsightsChartTotal
+						type="total"
+						:data="chartData"
+						:granularity
+						:start-date="range.start.toString()"
+						:end-date="range.end.toString()"
+					/>
+				</div>
+
+				<InsightsAnalystHighlights :highlights />
+				<InsightsAnalystRanking :ranking />
+				<InsightsAnalystLowImpact :low-impact />
 			</div>
 
-			<InsightsSummary
-				:summary="summaryDisplay"
-				:start-date="range.start"
-				:end-date="range.end"
-				link-variant="static"
-			/>
-
-			<div :class="$style.chart">
-				<InsightsChartTotal
-					type="total"
-					:data="chartData"
-					:granularity
-					:start-date="range.start.toString()"
-					:end-date="range.end.toString()"
-				/>
+			<div :class="$style.railSlot">
+				<InsightsAnalystChatRail :ranking />
 			</div>
-
-			<InsightsAnalystHighlights :highlights />
-			<InsightsAnalystRanking :ranking />
-			<InsightsAnalystLowImpact :low-impact />
 		</div>
 	</div>
 </template>
 
 <style lang="scss" module>
+@use '@/app/css/variables' as vars;
+
 .page {
 	flex: 1;
 	display: flex;
@@ -116,14 +125,25 @@ onMounted(() => {
 	overflow: auto;
 }
 
+.layout {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--lg);
+	width: 100%;
+	padding: var(--spacing--lg) var(--spacing--2xl);
+}
+
 .dashboard {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--lg);
 	width: 100%;
-	max-width: var(--content-container--width);
-	padding: var(--spacing--lg) var(--spacing--2xl);
-	margin: 0 auto;
+	min-width: 0;
+}
+
+.railSlot {
+	width: 100%;
+	min-width: 0;
 }
 
 .toolbar {
@@ -136,5 +156,22 @@ onMounted(() => {
 	border: var(--border-width) var(--border-style) var(--color--foreground);
 	border-radius: var(--radius--lg);
 	background: var(--color--background--light-3);
+}
+
+@media (min-width: vars.$breakpoint-sm) {
+	.layout {
+		flex-direction: row;
+		align-items: flex-start;
+	}
+
+	.dashboard {
+		flex: 1 1 70%;
+	}
+
+	.railSlot {
+		position: sticky;
+		top: var(--spacing--lg);
+		flex: 0 1 30%;
+	}
 }
 </style>

@@ -1,6 +1,8 @@
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import type {
+	InsightsAnalystChatRequest,
+	InsightsAnalystChatResponse,
 	InsightsAnalystOverview,
 	InsightsSummary,
 	InsightsByTime,
@@ -65,6 +67,12 @@ export const fetchInsightsAnalystOverview = async (
 		'/insights/analyst/overview',
 		serializeInsightsFilter(filter),
 	);
+
+export const sendInsightsAnalystChat = async (
+	context: IRestApiContext,
+	body: InsightsAnalystChatRequest,
+): Promise<InsightsAnalystChatResponse> =>
+	await makeRestApiRequest(context, 'POST', '/insights/analyst/chat', body);
 
 export const fetchInsightsByWorkflow = async (
 	context: IRestApiContext,
