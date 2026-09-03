@@ -9,7 +9,7 @@ import { InsightsModule } from '../insights.module';
 import { InsightsService } from '../insights.service';
 
 describe('InsightsAnalystSeedService', () => {
-	it('boot still succeeds if seed throws', async () => {
+	it('boot does not seed during tests so licensed Insights fixtures stay isolated', async () => {
 		const ensureSeeded = jest.fn().mockRejectedValue(new Error('seed failed'));
 		Container.set(InsightsAnalystSeedService, {
 			ensureSeeded,
@@ -19,6 +19,6 @@ describe('InsightsAnalystSeedService', () => {
 		Container.set(InstanceSettings, mock<InstanceSettings>({ instanceType: 'main' }));
 
 		await expect(Container.get(InsightsModule).init()).resolves.toBeUndefined();
-		expect(ensureSeeded).toHaveBeenCalled();
+		expect(ensureSeeded).not.toHaveBeenCalled();
 	});
 });
