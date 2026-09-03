@@ -2,16 +2,7 @@ export const INSIGHTS_DEMO_PROJECT_ID = 'insights-demo-project';
 export const INSIGHTS_DEMO_PROJECT_NAME = 'Demo Operations';
 export const INSIGHTS_DEMO_SEED_DAYS = 30;
 
-export type InsightsDemoWorkflowSeed = {
-	id: string;
-	name: string;
-	timeSavedPerExecution: number;
-	dailySuccess: number;
-	dailyFailure: number;
-	dailyRuntimeMs: number;
-};
-
-export const INSIGHTS_DEMO_WORKFLOWS: InsightsDemoWorkflowSeed[] = [
+export const INSIGHTS_DEMO_WORKFLOWS = [
 	{
 		id: 'insights-demo-wf-invoice',
 		name: 'Demo: AP invoice ingestion',
