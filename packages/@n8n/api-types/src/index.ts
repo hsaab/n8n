@@ -169,6 +169,26 @@ export {
 } from './schemas/insights.schema';
 
 export {
+	InsightsAnalystOverviewQueryDto,
+	insightsAnalystCitationSchema,
+	type InsightsAnalystCitation,
+	insightsAnalystChatResponseSchema,
+	type InsightsAnalystChatResponse,
+	insightsAnalystHighlightKindSchema,
+	type InsightsAnalystHighlightKind,
+	insightsAnalystHighlightSchema,
+	type InsightsAnalystHighlight,
+	insightsAnalystChartPointSchema,
+	type InsightsAnalystChartPoint,
+	insightsAnalystRankingRowSchema,
+	type InsightsAnalystRankingRow,
+	insightsAnalystLowImpactSchema,
+	type InsightsAnalystLowImpact,
+	insightsAnalystOverviewSchema,
+	type InsightsAnalystOverview,
+} from './schemas/insights-analyst.schema';
+
+export {
 	ROLE,
 	type Role,
 	type User,
