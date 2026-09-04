@@ -4,7 +4,7 @@ import type {
 	InsightsSummary,
 } from '@n8n/api-types';
 import { Service } from '@n8n/di';
-import { Between } from '@n8n/typeorm';
+import { And, LessThan, MoreThanOrEqual } from '@n8n/typeorm';
 import { DateTime } from 'luxon';
 
 import { InsightsByPeriod } from './database/entities/insights-by-period';
@@ -119,7 +119,7 @@ export class InsightsAnalystOverviewService {
 	private async loadPeriodRows(startDate: Date, endDate: Date) {
 		return await this.insightsByPeriodRepository.find({
 			where: {
-				periodStart: Between(startDate, endDate),
+				periodStart: And(MoreThanOrEqual(startDate), LessThan(endDate)),
 				metadata: { projectId: INSIGHTS_DEMO_PROJECT_ID },
 			},
 			relations: { metadata: true },
