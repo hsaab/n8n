@@ -1,3 +1,4 @@
+import { inTest, Logger } from '@n8n/backend-common';
 import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule, OnShutdown } from '@n8n/decorators';
 import { Container } from '@n8n/di';
@@ -13,6 +14,19 @@ export class InsightsModule implements ModuleInterface {
 
 		const { InsightsService } = await import('./insights.service');
 		await Container.get(InsightsService).init();
+
+		// Licensed Insights tests boot this module after creating an owner. Seeding
+		// here would insert Demo Operations workflows into GET /insights/by-workflow.
+		// Analyst tests still seed from getOverview / answer.
+		if (!inTest) {
+			const { InsightsAnalystSeedService } = await import('./insights-analyst-seed.service');
+			try {
+				await Container.get(InsightsAnalystSeedService).ensureSeeded();
+			} catch (error) {
+				const message = error instanceof Error ? error.message : String(error);
+				Container.get(Logger).error(`Insights analyst seed failed: ${message}`);
+			}
+		}
 	}
 
 	async entities() {
