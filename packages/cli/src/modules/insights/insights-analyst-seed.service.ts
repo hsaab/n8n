@@ -3,6 +3,7 @@ import {
 	Project,
 	ProjectRelation,
 	ProjectRepository,
+	SharedCredentials,
 	SharedWorkflow,
 	UserRepository,
 	WorkflowEntity,
@@ -65,13 +66,34 @@ export class InsightsAnalystSeedService {
 					projectId: Not(INSIGHTS_DEMO_PROJECT_ID),
 				},
 			});
-			const staleProjectIds = [...new Set(straySharings.map((sharing) => sharing.projectId))];
+			const candidateProjectIds = [...new Set(straySharings.map((sharing) => sharing.projectId))];
 			if (straySharings.length > 0) {
 				await trx.remove(straySharings);
 			}
-			if (staleProjectIds.length > 0) {
-				await trx.delete(ProjectRelation, { projectId: In(staleProjectIds) });
-				await trx.delete(Project, { id: In(staleProjectIds) });
+			if (candidateProjectIds.length > 0) {
+				const leftoverTeamProjects = await trx.find(Project, {
+					where: { id: In(candidateProjectIds), type: 'team' },
+				});
+				const leftoverTeamProjectIds = leftoverTeamProjects.map((project) => project.id);
+				if (leftoverTeamProjectIds.length > 0) {
+					const remainingWorkflowShares = await trx.find(SharedWorkflow, {
+						where: { projectId: In(leftoverTeamProjectIds) },
+					});
+					const remainingCredentialShares = await trx.find(SharedCredentials, {
+						where: { projectId: In(leftoverTeamProjectIds) },
+					});
+					const projectsWithOtherContent = new Set([
+						...remainingWorkflowShares.map((share) => share.projectId),
+						...remainingCredentialShares.map((share) => share.projectId),
+					]);
+					const staleProjectIds = leftoverTeamProjectIds.filter(
+						(projectId) => !projectsWithOtherContent.has(projectId),
+					);
+					if (staleProjectIds.length > 0) {
+						await trx.delete(ProjectRelation, { projectId: In(staleProjectIds) });
+						await trx.delete(Project, { id: In(staleProjectIds) });
+					}
+				}
 			}
 
 			await trx.save(Project, {

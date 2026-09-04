@@ -1,7 +1,9 @@
 import {
 	createTeamProject,
 	createWorkflow,
+	getPersonalProject,
 	getProjectRoleForUser,
+	shareWorkflowWithProjects,
 	testDb,
 	testModules,
 } from '@n8n/backend-test-utils';
@@ -200,6 +202,43 @@ describe('InsightsAnalystSeedService', () => {
 
 		expect(await Container.get(ProjectRepository).findOneBy({ id: stale.id })).toBeNull();
 		expect(await Container.get(ProjectRepository).findOneBy({ id: decoy.id })).not.toBeNull();
+		expect(
+			await Container.get(SharedWorkflowRepository).findOneBy({
+				workflowId: reserved.id,
+				projectId: CANONICAL_PROJECT_ID,
+			}),
+		).not.toBeNull();
+	});
+
+	it('sharing a reserved demo workflow into a real team or personal project does not delete that project', async () => {
+		const owner = await createOwner();
+		await ensureSeeded();
+
+		const [reserved] = await demoWorkflows();
+		const live = await createTeamProject('Live Operations');
+		const liveWorkflow = await createWorkflow({ name: 'Live operations workflow' }, live);
+		const personal = await getPersonalProject(owner);
+		await shareWorkflowWithProjects(reserved, [{ project: live }, { project: personal }]);
+
+		await ensureSeeded();
+
+		expect(await Container.get(ProjectRepository).findOneBy({ id: live.id })).not.toBeNull();
+		expect(await Container.get(ProjectRepository).findOneBy({ id: personal.id })).not.toBeNull();
+		expect(
+			await Container.get(WorkflowRepository).findOneBy({ id: liveWorkflow.id }),
+		).not.toBeNull();
+		expect(
+			await Container.get(SharedWorkflowRepository).findOneBy({
+				workflowId: reserved.id,
+				projectId: live.id,
+			}),
+		).toBeNull();
+		expect(
+			await Container.get(SharedWorkflowRepository).findOneBy({
+				workflowId: reserved.id,
+				projectId: personal.id,
+			}),
+		).toBeNull();
 		expect(
 			await Container.get(SharedWorkflowRepository).findOneBy({
 				workflowId: reserved.id,
