@@ -19,5 +19,9 @@ export const fetchInsightsAnalystDashboard = async (
 export const postInsightsAnalystChat = async (
 	context: IRestApiContext,
 	message: string,
+	filter?: { startDate?: Date; endDate?: Date },
 ): Promise<InsightsAnalystChatResponse> =>
-	await makeRestApiRequest(context, 'POST', '/insights/analyst/chat', { message });
+	await makeRestApiRequest(context, 'POST', '/insights/analyst/chat', {
+		message,
+		...serializeRange(filter),
+	});

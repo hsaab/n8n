@@ -5,6 +5,8 @@ import { Service } from '@n8n/di';
 
 import { InsightsAnalystConfig } from './insights-analyst.config';
 
+const MODEL_TIMEOUT_MS = 30_000;
+
 export type AnalystChatResult = {
 	answer: string;
 	citations: InsightsAnalystCitation[];
@@ -59,6 +61,7 @@ export class InsightsAnalystChat {
 		const result = await generateText({
 			model,
 			prompt: this.buildPrompt(message, workflows),
+			timeout: MODEL_TIMEOUT_MS,
 		});
 		return result.text;
 	}

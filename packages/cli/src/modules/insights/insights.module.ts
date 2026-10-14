@@ -15,9 +15,12 @@ export class InsightsModule implements ModuleInterface {
 		const { InsightsService } = await import('./insights.service');
 		await Container.get(InsightsService).init();
 
+		const { InsightsAnalystConfig } = await import('./analyst/insights-analyst.config');
 		const { InstanceSettings } = await import('n8n-core');
-		const instanceType = Container.get(InstanceSettings).instanceType;
-		if (instanceType === 'main' || instanceType === 'webhook') {
+		if (
+			Container.get(InsightsAnalystConfig).demoEnabled &&
+			Container.get(InstanceSettings).isLeader
+		) {
 			const { InsightsAnalystSeed } = await import('./analyst/insights-analyst.seed');
 			await Container.get(InsightsAnalystSeed).run();
 		}

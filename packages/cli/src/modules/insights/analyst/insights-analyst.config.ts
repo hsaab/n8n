@@ -3,6 +3,13 @@ import { Config, Env } from '@n8n/config';
 @Config
 export class InsightsAnalystConfig {
 	/**
+	 * Whether to seed the Insights Analyst demo project, workflows, executions
+	 * and aggregates on startup. Default: false.
+	 */
+	@Env('N8N_INSIGHTS_ANALYST_DEMO')
+	demoEnabled: boolean = false;
+
+	/**
 	 * API key for the Insights Analyst chat. When empty, the analyst answers
 	 * from deterministic templates. Default: empty string.
 	 */

@@ -21,8 +21,10 @@ export const useInsightsAnalystStore = defineStore('insightsAnalyst', () => {
 	const loading = ref(false);
 	const chatPending = ref(false);
 	const messages = ref<AnalystChatMessage[]>([]);
+	const range = ref<{ startDate?: Date; endDate?: Date } | undefined>();
 
 	async function load(filter?: { startDate?: Date; endDate?: Date }) {
+		range.value = filter;
 		loading.value = true;
 		try {
 			dashboard.value = await fetchInsightsAnalystDashboard(rootStore.restApiContext, filter);
@@ -35,7 +37,11 @@ export const useInsightsAnalystStore = defineStore('insightsAnalyst', () => {
 		messages.value = [...messages.value, { id: crypto.randomUUID(), role: 'user', text: message }];
 		chatPending.value = true;
 		try {
-			const response = await postInsightsAnalystChat(rootStore.restApiContext, message);
+			const response = await postInsightsAnalystChat(
+				rootStore.restApiContext,
+				message,
+				range.value,
+			);
 			messages.value = [
 				...messages.value,
 				{

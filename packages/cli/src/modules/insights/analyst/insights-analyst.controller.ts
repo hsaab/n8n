@@ -25,6 +25,7 @@ export class InsightsAnalystController {
 		_res: Response,
 		@Body body: InsightsAnalystChatRequestDto,
 	) {
-		return await this.analystService.ask(body.message);
+		const { message, ...range } = body;
+		return await this.analystService.ask(message, range);
 	}
 }

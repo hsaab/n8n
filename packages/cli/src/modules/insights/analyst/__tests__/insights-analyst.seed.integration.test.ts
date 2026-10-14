@@ -34,7 +34,7 @@ describe('InsightsAnalystSeed', () => {
 		await testDb.terminate();
 	});
 
-	it('keeps one demo project and the same aggregate rows when run twice', async () => {
+	it('keeps the demo project, other projects and the same aggregate rows when run twice', async () => {
 		const seed = Container.get(InsightsAnalystSeed);
 		const projectRepository = Container.get(ProjectRepository);
 		const workflowRepository = Container.get(WorkflowRepository);
@@ -48,10 +48,11 @@ describe('InsightsAnalystSeed', () => {
 		const periodCount = await periodRepository.count();
 		expect(periodCount).toBeGreaterThan(0);
 
-		await createTeamProject(DEMO_PROJECT_NAME);
+		const userProject = await createTeamProject(DEMO_PROJECT_NAME);
 		await seed.run();
 
-		expect(await projectRepository.count({ where: { name: DEMO_PROJECT_NAME } })).toBe(1);
+		expect(await projectRepository.count({ where: { name: DEMO_PROJECT_NAME } })).toBe(2);
+		expect(await projectRepository.findOneBy({ id: userProject.id })).toBeTruthy();
 		expect(await projectRepository.findOneBy({ id: DEMO_PROJECT_ID })).toBeTruthy();
 		expect(await periodRepository.count()).toBe(periodCount);
 		expect(await workflowRepository.count({ where: { id: In(DEMO_WORKFLOW_IDS) } })).toBe(8);

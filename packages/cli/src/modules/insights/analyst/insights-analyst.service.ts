@@ -39,17 +39,10 @@ export class InsightsAnalystService {
 				startDate,
 				endDate,
 			}),
-			this.insightsService.getInsightsByWorkflow({
-				projectId: DEMO_PROJECT_ID,
-				startDate,
-				endDate,
-				skip: 0,
-				take: 20,
-				sortBy: 'total:desc',
-			}),
+			this.getByWorkflow(startDate, endDate),
 		]);
 
-		const rows = byWorkflow.data.flatMap((row) => this.toWorkflowRow(row));
+		const rows = this.toWorkflowRows(byWorkflow);
 		const rankings = [...rows].sort((left, right) => right.timeSaved - left.timeSaved).slice(0, 5);
 		const lowImpact = [...rows]
 			.sort((left, right) => left.timeSavedPerExecution - right.timeSavedPerExecution)
@@ -76,9 +69,27 @@ export class InsightsAnalystService {
 		});
 	}
 
-	async ask(message: string) {
-		const dashboard = await this.getDashboard({});
-		return await this.chat.answer(message, dashboard.rankings);
+	async ask(message: string, query: InsightsAnalystDashboardQueryDto) {
+		const { startDate, endDate } = this.resolveRange(query);
+		const byWorkflow = await this.getByWorkflow(startDate, endDate);
+		return await this.chat.answer(message, this.toWorkflowRows(byWorkflow));
+	}
+
+	private async getByWorkflow(startDate: Date, endDate: Date) {
+		return await this.insightsService.getInsightsByWorkflow({
+			projectId: DEMO_PROJECT_ID,
+			startDate,
+			endDate,
+			skip: 0,
+			take: 20,
+			sortBy: 'total:desc',
+		});
+	}
+
+	private toWorkflowRows(
+		byWorkflow: Awaited<ReturnType<InsightsService['getInsightsByWorkflow']>>,
+	): InsightsAnalystWorkflowRow[] {
+		return byWorkflow.data.flatMap((row) => this.toWorkflowRow(row));
 	}
 
 	private resolveRange(query: InsightsAnalystDashboardQueryDto): {

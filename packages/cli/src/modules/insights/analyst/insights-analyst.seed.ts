@@ -9,7 +9,7 @@ import {
 	WorkflowRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { In, Not } from '@n8n/typeorm';
+import { In } from '@n8n/typeorm';
 import { DateTime } from 'luxon';
 
 import { InsightsByPeriod } from '../database/entities/insights-by-period';
@@ -46,35 +46,12 @@ export class InsightsAnalystSeed {
 	}
 
 	async run(): Promise<void> {
-		await this.removeDuplicateProjects();
 		await this.ensureProject();
 		await this.ensureWorkflows();
 		await this.ensureOwnerRelation();
 		await this.replaceInsights();
 		await this.replaceExecutions();
 		this.logger.info('Insights analyst demo data is ready', { projectId: DEMO_PROJECT_ID });
-	}
-
-	private async removeDuplicateProjects(): Promise<void> {
-		const duplicates = await this.projectRepository.find({
-			where: { name: DEMO_PROJECT_NAME, id: Not(DEMO_PROJECT_ID) },
-		});
-		for (const project of duplicates) {
-			const shares = await this.sharedWorkflowRepository.find({
-				where: { projectId: project.id },
-			});
-			const workflowIds = shares.map((share) => share.workflowId);
-			await this.deleteInsights(workflowIds);
-			if (workflowIds.length > 0) {
-				await this.executionRepository.delete({ workflowId: In(workflowIds) });
-			}
-			await this.sharedWorkflowRepository.delete({ projectId: project.id });
-			if (workflowIds.length > 0) {
-				await this.workflowRepository.delete({ id: In(workflowIds) });
-			}
-			await this.projectRelationRepository.delete({ projectId: project.id });
-			await this.projectRepository.delete({ id: project.id });
-		}
 	}
 
 	private async ensureProject(): Promise<void> {
