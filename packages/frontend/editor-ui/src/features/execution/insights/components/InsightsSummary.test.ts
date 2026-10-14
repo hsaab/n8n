@@ -1,4 +1,5 @@
 import { reactive } from 'vue';
+import { fireEvent } from '@testing-library/vue';
 import InsightsSummary from '@/features/execution/insights/components/InsightsSummary.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import type { InsightsSummaryDisplay } from '@/features/execution/insights/insights.types';
@@ -45,6 +46,26 @@ describe('InsightsSummary', () => {
 				},
 			}),
 		).not.toThrow();
+	});
+
+	it('emits select and does not render a route link when linkVariant is static', async () => {
+		const onSelect = vi.fn();
+		const { container } = renderComponent({
+			props: {
+				linkVariant: 'static',
+				onSelect,
+				summary: [{ id: 'total', value: 10, deviation: 1, unit: '', deviationUnit: '%' }],
+				startDate,
+				endDate,
+			},
+		});
+
+		const button = container.querySelector('[data-test-id="insights-summary-tab-total"] button');
+		expect(button).not.toBeNull();
+		expect(container.querySelector('[data-test-id="insights-summary-tab-total"] a')).toBeNull();
+		if (!button) return;
+		await fireEvent.click(button);
+		expect(onSelect).toHaveBeenCalledWith('total');
 	});
 
 	test.each<InsightsSummaryDisplay[]>([
