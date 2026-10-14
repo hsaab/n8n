@@ -78,7 +78,8 @@ export class InsightsAnalystService {
 
 	async ask(message: string) {
 		const dashboard = await this.getDashboard({});
-		return await this.chat.answer(message, dashboard.rankings);
+		const rows = dashboard.byWorkflow.data.flatMap((row) => this.toWorkflowRow(row));
+		return await this.chat.answer(message, rows);
 	}
 
 	private resolveRange(query: InsightsAnalystDashboardQueryDto): {
