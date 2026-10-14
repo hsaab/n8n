@@ -56,20 +56,14 @@ function citationLabel(citation: InsightsAnalystCitation) {
 
 <template>
 	<aside :class="$style.rail" data-test-id="insights-analyst-chat">
-		<h3>{{ i18n.baseText('insights.analyst.chat.title') }}</h3>
-		<div :class="$style.prompts">
-			<button
-				v-for="prompt in prompts"
-				:key="prompt"
-				type="button"
-				:class="$style.prompt"
-				data-test-id="insights-analyst-prompt"
-				@click="send(prompt)"
-			>
-				{{ prompt }}
-			</button>
-		</div>
+		<header>
+			<h3>{{ i18n.baseText('insights.analyst.chat.title') }}</h3>
+			<p>{{ i18n.baseText('insights.analyst.chat.subtitle') }}</p>
+		</header>
 		<div :class="$style.thread">
+			<p v-if="props.messages.length === 0" :class="$style.welcome">
+				{{ i18n.baseText('insights.analyst.chat.welcome') }}
+			</p>
 			<div
 				v-for="message in props.messages"
 				:key="message.id"
@@ -95,7 +89,19 @@ function citationLabel(citation: InsightsAnalystCitation) {
 			</div>
 			<ChatTypingIndicator v-if="props.pending" />
 		</div>
-		<div :class="$style.input">
+		<div :class="$style.composer">
+			<div :class="$style.prompts">
+				<button
+					v-for="prompt in prompts"
+					:key="prompt"
+					type="button"
+					:class="$style.prompt"
+					data-test-id="insights-analyst-prompt"
+					@click="send(prompt)"
+				>
+					{{ prompt }}
+				</button>
+			</div>
 			<ChatInputBase
 				v-model="draft"
 				:is-streaming="false"
@@ -114,18 +120,60 @@ function citationLabel(citation: InsightsAnalystCitation) {
 .rail {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--sm);
-	min-height: 0;
-	padding: var(--spacing--sm);
+	min-width: 0;
 	border: var(--border);
-	border-radius: var(--radius--lg);
+	border-radius: var(--radius--2xs);
 	background: var(--background--surface);
 
-	h3 {
+	header {
+		display: flex;
+		flex-direction: column;
+		gap: var(--spacing--4xs);
+		padding: var(--spacing--lg);
+		border-bottom: var(--border);
+	}
+
+	h3,
+	header p {
 		margin: 0;
+	}
+
+	h3 {
 		color: var(--color--text);
 		font-size: var(--font-size--sm);
+		font-weight: var(--font-weight--bold);
 	}
+
+	header p {
+		color: var(--color--text--tint-1);
+		font-size: var(--font-size--sm);
+	}
+}
+
+.thread {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--sm);
+	max-height: calc(var(--spacing--5xl) + var(--spacing--2xl));
+	padding: var(--spacing--lg);
+	overflow: auto;
+}
+
+.welcome {
+	margin: 0;
+	padding: var(--spacing--sm);
+	border-radius: var(--radius--2xs);
+	background: var(--color--background--light-2);
+	color: var(--color--text--tint-1);
+	font-size: var(--font-size--sm);
+}
+
+.composer {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--sm);
+	padding: var(--spacing--lg);
+	border-top: var(--border);
 }
 
 .prompts {
@@ -138,21 +186,13 @@ function citationLabel(citation: InsightsAnalystCitation) {
 	@include prompts.prompt-suggestion-button;
 }
 
-.thread {
-	display: flex;
-	flex: 1;
-	flex-direction: column;
-	gap: var(--spacing--sm);
-	overflow: auto;
-}
-
 .message {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--2xs);
 	max-width: 100%;
-	padding: var(--spacing--xs) var(--spacing--sm);
-	border-radius: var(--radius--lg);
+	padding: var(--spacing--sm);
+	border-radius: var(--radius--2xs);
 
 	p {
 		margin: 0;
@@ -172,31 +212,25 @@ function citationLabel(citation: InsightsAnalystCitation) {
 		justify-content: space-between;
 		gap: var(--spacing--xs);
 		padding: var(--spacing--2xs) var(--spacing--xs);
-		border-radius: var(--radius--lg);
-		background: var(--color--background);
+		border-radius: var(--radius--2xs);
+		background: var(--background--surface);
 	}
 }
 
 .user {
 	align-self: flex-end;
-	background: var(--color--primary);
-	color: var(--color--text--tint-3);
+	background: var(--color--background--light-3);
+	color: var(--color--text);
 }
 
 .assistant {
 	align-self: flex-start;
-	background: var(--color--background);
+	background: var(--color--background--light-2);
 	color: var(--color--text);
 }
 
 .badge {
 	color: var(--color--text--tint-1);
 	font-size: var(--font-size--2xs);
-}
-
-.input {
-	position: sticky;
-	bottom: 0;
-	background: var(--background--surface);
 }
 </style>

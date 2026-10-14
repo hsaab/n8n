@@ -14,6 +14,7 @@ export type DemoWorkflowSpec = {
 	dailySuccess: number;
 	dailyFailure: number;
 	runtimeMs: number;
+	description: string;
 };
 
 export const DEMO_WORKFLOWS: DemoWorkflowSpec[] = [
@@ -25,6 +26,7 @@ export const DEMO_WORKFLOWS: DemoWorkflowSpec[] = [
 		dailySuccess: 8,
 		dailyFailure: 1,
 		runtimeMs: 4500,
+		description: 'Routes supplier invoices and asks finance to review only the exceptions.',
 	},
 	{
 		id: 'insights-demo-workflow-02',
@@ -34,6 +36,7 @@ export const DEMO_WORKFLOWS: DemoWorkflowSpec[] = [
 		dailySuccess: 6,
 		dailyFailure: 1,
 		runtimeMs: 6200,
+		description: 'Scores inbound leads and routes the ones worth a follow-up.',
 	},
 	{
 		id: 'insights-demo-workflow-03',
@@ -43,6 +46,7 @@ export const DEMO_WORKFLOWS: DemoWorkflowSpec[] = [
 		dailySuccess: 4,
 		dailyFailure: 0,
 		runtimeMs: 1800,
+		description: 'Posts a short incident summary when production runs fail.',
 	},
 	{
 		id: 'insights-demo-workflow-04',
@@ -52,6 +56,7 @@ export const DEMO_WORKFLOWS: DemoWorkflowSpec[] = [
 		dailySuccess: 2,
 		dailyFailure: 0,
 		runtimeMs: 9000,
+		description: 'Nudges owners when onboarding approvals or documents stall.',
 	},
 	{
 		id: 'insights-demo-workflow-05',
@@ -61,6 +66,7 @@ export const DEMO_WORKFLOWS: DemoWorkflowSpec[] = [
 		dailySuccess: 3,
 		dailyFailure: 1,
 		runtimeMs: 5100,
+		description: 'Reminds account owners before a renewal date slips.',
 	},
 	{
 		id: 'insights-demo-workflow-06',
@@ -70,6 +76,7 @@ export const DEMO_WORKFLOWS: DemoWorkflowSpec[] = [
 		dailySuccess: 7,
 		dailyFailure: 3,
 		runtimeMs: 3800,
+		description: 'Collects delayed tickets and shows where support should intervene first.',
 	},
 	{
 		id: 'insights-demo-workflow-07',
@@ -79,6 +86,7 @@ export const DEMO_WORKFLOWS: DemoWorkflowSpec[] = [
 		dailySuccess: 1,
 		dailyFailure: 0,
 		runtimeMs: 12000,
+		description: "Summarizes the week's revenue for the Monday review.",
 	},
 	{
 		id: 'insights-demo-workflow-08',
@@ -88,6 +96,7 @@ export const DEMO_WORKFLOWS: DemoWorkflowSpec[] = [
 		dailySuccess: 2,
 		dailyFailure: 1,
 		runtimeMs: 7000,
+		description: 'Retries failed payments and flags the ones that still need a person.',
 	},
 ];
 

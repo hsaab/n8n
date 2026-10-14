@@ -30,6 +30,7 @@ export const insightsAnalystHighlightSchema = z
 		id: z.string(),
 		workflowId: z.string(),
 		workflowName: z.string(),
+		description: z.string(),
 		metric: insightsAnalystMetricSchema,
 		value: z.number(),
 	})
@@ -45,6 +46,8 @@ export const insightsAnalystWorkflowRowSchema = z
 		failureRate: z.number(),
 		timeSaved: z.number(),
 		averageRunTime: z.number(),
+		timeSavedPerExecution: z.number(),
+		description: z.string(),
 	})
 	.strict();
 export type InsightsAnalystWorkflowRow = z.infer<typeof insightsAnalystWorkflowRowSchema>;

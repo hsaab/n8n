@@ -13,6 +13,8 @@ const workflows: InsightsAnalystWorkflowRow[] = [
 		failureRate: 0.1,
 		timeSaved: 120,
 		averageRunTime: 1000,
+		timeSavedPerExecution: 15,
+		description: 'Routes supplier invoices and asks finance to review only the exceptions.',
 	},
 	{
 		workflowId: 'insights-demo-workflow-06',
@@ -22,6 +24,8 @@ const workflows: InsightsAnalystWorkflowRow[] = [
 		failureRate: 0.75,
 		timeSaved: 20,
 		averageRunTime: 500,
+		timeSavedPerExecution: 6,
+		description: 'Collects delayed tickets and shows where support should intervene first.',
 	},
 ];
 

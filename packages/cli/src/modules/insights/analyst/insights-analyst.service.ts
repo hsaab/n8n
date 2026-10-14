@@ -14,7 +14,10 @@ import {
 	DEMO_DEFAULT_RANGE_DAYS,
 	DEMO_PROJECT_ID,
 	DEMO_PROJECT_NAME,
+	DEMO_WORKFLOWS,
 } from './insights-analyst.constants';
+
+const workflowSpecs = new Map(DEMO_WORKFLOWS.map((workflow) => [workflow.id, workflow]));
 
 @Service()
 export class InsightsAnalystService {
@@ -47,8 +50,10 @@ export class InsightsAnalystService {
 		]);
 
 		const rows = byWorkflow.data.flatMap((row) => this.toWorkflowRow(row));
-		const rankings = [...rows].sort((left, right) => right.timeSaved - left.timeSaved);
-		const lowImpact = [...rows].sort((left, right) => left.timeSaved - right.timeSaved).slice(0, 4);
+		const rankings = [...rows].sort((left, right) => right.timeSaved - left.timeSaved).slice(0, 5);
+		const lowImpact = [...rows]
+			.sort((left, right) => left.timeSavedPerExecution - right.timeSavedPerExecution)
+			.slice(0, 3);
 
 		return insightsAnalystDashboardSchema.parse({
 			project: { id: DEMO_PROJECT_ID, name: DEMO_PROJECT_NAME },
@@ -104,6 +109,7 @@ export class InsightsAnalystService {
 		averageRunTime: number;
 	}): InsightsAnalystWorkflowRow[] {
 		if (!row.workflowId) return [];
+		const spec = workflowSpecs.get(row.workflowId);
 		return [
 			{
 				workflowId: row.workflowId,
@@ -113,48 +119,50 @@ export class InsightsAnalystService {
 				failureRate: row.failureRate,
 				timeSaved: row.timeSaved,
 				averageRunTime: row.averageRunTime,
+				timeSavedPerExecution: spec?.timeSavedPerExecution ?? 0,
+				description: spec?.description ?? '',
 			},
 		];
 	}
 
 	private buildHighlights(rows: InsightsAnalystWorkflowRow[]) {
-		const byTimeSaved = [...rows].sort((left, right) => right.timeSaved - left.timeSaved)[0];
-		const byFailure = [...rows].sort((left, right) => right.failureRate - left.failureRate)[0];
-		const byTotal = [...rows].sort((left, right) => right.total - left.total)[0];
+		const impact = [...rows].sort((left, right) => right.timeSaved - left.timeSaved)[0];
+		const lowPerRun = [...rows].sort(
+			(left, right) => left.timeSavedPerExecution - right.timeSavedPerExecution,
+		)[0];
+		const attention = [...rows].sort((left, right) => right.failed - left.failed)[0];
 		const highlights = [
-			byTimeSaved
+			impact
 				? {
-						id: 'time-saved',
-						workflowId: byTimeSaved.workflowId,
-						workflowName: byTimeSaved.workflowName,
+						id: 'impact',
+						workflowId: impact.workflowId,
+						workflowName: impact.workflowName,
+						description: impact.description,
 						metric: 'timeSaved' as const,
-						value: byTimeSaved.timeSaved,
+						value: impact.timeSaved,
 					}
 				: null,
-			byFailure
+			lowPerRun
 				? {
-						id: 'failure-rate',
-						workflowId: byFailure.workflowId,
-						workflowName: byFailure.workflowName,
-						metric: 'failureRate' as const,
-						value: byFailure.failureRate,
+						id: 'low-per-run',
+						workflowId: lowPerRun.workflowId,
+						workflowName: lowPerRun.workflowName,
+						description: lowPerRun.description,
+						metric: 'timeSaved' as const,
+						value: lowPerRun.timeSavedPerExecution,
 					}
 				: null,
-			byTotal
+			attention
 				? {
-						id: 'total',
-						workflowId: byTotal.workflowId,
-						workflowName: byTotal.workflowName,
-						metric: 'total' as const,
-						value: byTotal.total,
+						id: 'attention',
+						workflowId: attention.workflowId,
+						workflowName: attention.workflowName,
+						description: attention.description,
+						metric: 'failed' as const,
+						value: attention.failed,
 					}
 				: null,
 		];
-		const seen = new Set<string>();
-		return highlights.flatMap((highlight) => {
-			if (!highlight || seen.has(highlight.id)) return [];
-			seen.add(highlight.id);
-			return [highlight];
-		});
+		return highlights.flatMap((highlight) => (highlight ? [highlight] : []));
 	}
 }
