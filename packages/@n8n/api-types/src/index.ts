@@ -169,6 +169,18 @@ export {
 } from './schemas/insights.schema';
 
 export {
+	insightsAnalystDashboardSchema,
+	insightsAnalystChatResponseSchema,
+	insightsAnalystCompletionSchema,
+	type InsightsAnalystDashboard,
+	type InsightsAnalystWorkflowRow,
+	type InsightsAnalystCitation,
+	type InsightsAnalystCitationMetric,
+	type InsightsAnalystChatResponse,
+	type InsightsAnalystCompletion,
+} from './schemas/insights-analyst.schema';
+
+export {
 	ROLE,
 	type Role,
 	type User,

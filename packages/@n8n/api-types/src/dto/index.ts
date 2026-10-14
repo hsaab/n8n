@@ -128,6 +128,8 @@ export { TransferFolderBodyDto } from './folders/transfer-folder.dto';
 
 export { ListInsightsWorkflowQueryDto } from './insights/list-workflow-query.dto';
 export { InsightsDateFilterDto } from './insights/date-filter.dto';
+export { InsightsAnalystDashboardQueryDto } from './insights/analyst-dashboard-query.dto';
+export { InsightsAnalystChatRequestDto } from './insights/analyst-chat-request.dto';
 
 export { GetDestinationQueryDto } from './log-streaming/get-destination-query.dto';
 export {

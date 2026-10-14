@@ -9,6 +9,7 @@ import { getLocalTimeZone, isToday, now, toCalendarDateTime, today } from '@inte
 import type { InsightsDateRange, InsightsSummary, InsightsSummaryType } from '@n8n/api-types';
 import type { DateRange } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { smartDecimal } from '@n8n/utils/number/smartDecimal';
 import dateformat from 'dateformat';
 
 const DATE_FORMAT_DAY_MONTH_YEAR = 'd mmm, yyyy';
@@ -16,6 +17,17 @@ const DATE_FORMAT_DAY_MONTH = 'd mmm';
 
 export const transformInsightsTimeSaved = (minutes: number): number =>
 	Math.round(minutes / (Math.abs(minutes) < 60 ? 1 : 60)); // we want to show saved time in minutes or hours
+
+/** Formats a time-saved amount in minutes as a short i18n label, keeping the sign. */
+export const formatInsightsTimeSavedLabel = (minutes: number): string => {
+	const i18n = useI18n();
+	const absoluteMinutes = Math.abs(minutes);
+	const value = smartDecimal(transformInsightsTimeSaved(absoluteMinutes));
+	const key =
+		absoluteMinutes < 60 ? 'insights.timeSaved.label.minutes' : 'insights.timeSaved.label.hours';
+	const label = i18n.baseText(key, { interpolate: { value: String(value) } });
+	return minutes < 0 ? `-${label}` : label;
+};
 export const transformInsightsAverageRunTime = (ms: number): number => ms / 1000; // we want to show average run time in seconds
 export const transformInsightsFailureRate = (value: number): number => value * 100; // we want to show failure rate in percentage
 
@@ -63,6 +75,8 @@ export const transformInsightsSummary = (data: InsightsSummary | null): Insights
 						? ''
 						: INSIGHTS_DEVIATION_UNIT_MAPPING[key](data[key].deviation),
 				unit: INSIGHTS_UNIT_MAPPING[key](data[key].value),
+				rawValue: data[key].value,
+				rawDeviation: data[key].deviation,
 			}))
 		: [];
 

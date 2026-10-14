@@ -10,9 +10,25 @@ import { Container } from '@n8n/di';
 export class InsightsModule implements ModuleInterface {
 	async init() {
 		await import('./insights.controller');
+		await import('./analyst/insights-analyst.controller');
 
 		const { InsightsService } = await import('./insights.service');
 		await Container.get(InsightsService).init();
+
+		const { InstanceSettings } = await import('n8n-core');
+		if (Container.get(InstanceSettings).instanceType !== 'main') return;
+
+		try {
+			const { InsightsAnalystSeedService } = await import(
+				'./analyst/insights-analyst-seed.service'
+			);
+			await Container.get(InsightsAnalystSeedService).seed();
+		} catch (error) {
+			const { Logger } = await import('@n8n/backend-common');
+			Container.get(Logger).error('Insights analyst seed failed', {
+				errorName: error instanceof Error ? error.name : 'unknown',
+			});
+		}
 	}
 
 	async entities() {

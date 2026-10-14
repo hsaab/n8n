@@ -14,6 +14,10 @@ export type InsightsSummaryDisplay = Array<
 			deviation: number | null;
 			deviationUnit: ReturnType<InsightsDisplayDeviationUnits[K]>;
 			unit: ReturnType<InsightsDisplayUnits[K]>;
+			/** Untransformed source value. For time saved this is minutes. */
+			rawValue?: number;
+			/** Untransformed deviation. For time saved this is minutes. */
+			rawDeviation?: number | null;
 		};
 	}[keyof InsightsDisplayUnits]
 >;

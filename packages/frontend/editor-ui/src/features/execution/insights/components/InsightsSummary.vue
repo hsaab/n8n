@@ -14,14 +14,25 @@ import { smartDecimal } from '@n8n/utils/number/smartDecimal';
 import { computed, useCssModule } from 'vue';
 import { I18nT } from 'vue-i18n';
 import { useRoute } from 'vue-router';
-import { formatDateRange, getMatchingPreset, getTimeRangeLabels } from '../insights.utils';
+import {
+	formatDateRange,
+	formatInsightsTimeSavedLabel,
+	getMatchingPreset,
+	getTimeRangeLabels,
+} from '../insights.utils';
 
-const props = defineProps<{
-	summary: InsightsSummaryDisplay;
-	startDate?: DateValue;
-	endDate?: DateValue;
-	loading?: boolean;
-}>();
+const props = withDefaults(
+	defineProps<{
+		summary: InsightsSummaryDisplay;
+		startDate?: DateValue;
+		endDate?: DateValue;
+		loading?: boolean;
+		linkVariant?: 'route' | 'static';
+	}>(),
+	{
+		linkVariant: 'route',
+	},
+);
 
 const i18n = useI18n();
 const route = useRoute();
@@ -87,9 +98,21 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 <template>
 	<div :class="$style.insightsWrapper">
 		<div :class="$style.insights">
-			<ul data-test-id="insights-summary-tabs">
+			<ul
+				data-test-id="insights-summary-tabs"
+				v-bind="props.linkVariant === 'static' ? { class: $style.staticSummary } : {}"
+			>
 				<li
-					v-for="{ id, value, deviation, deviationUnit, unit, to } in summaryWithRouteLocations"
+					v-for="{
+						id,
+						value,
+						deviation,
+						deviationUnit,
+						unit,
+						to,
+						rawValue,
+						rawDeviation,
+					} in summaryWithRouteLocations"
 					:key="id"
 					:data-test-id="`insights-summary-tab-${id}`"
 				>
@@ -110,7 +133,12 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 								</template>
 							</I18nT>
 						</template>
-						<RouterLink :to="to" :exact-active-class="$style.activeTab" @click="trackTabClick(id)">
+						<component
+							:is="props.linkVariant === 'static' ? 'div' : 'RouterLink'"
+							:to="props.linkVariant === 'static' ? undefined : to"
+							:exact-active-class="props.linkVariant === 'static' ? undefined : $style.activeTab"
+							@click="props.linkVariant === 'static' ? undefined : trackTabClick(id)"
+						>
 							<strong>
 								<N8nTooltip placement="bottom" :disabled="id !== 'timeSaved'">
 									<template #content>
@@ -138,7 +166,10 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 								</small>
 							</span>
 							<span v-else>
-								<em
+								<em v-if="id === 'timeSaved' && rawValue !== undefined">{{
+									formatInsightsTimeSavedLabel(rawValue)
+								}}</em>
+								<em v-else
 									>{{ smartDecimal(value).toLocaleString('en-US') }} <i>{{ unit }}</i></em
 								>
 								<small v-if="deviation !== null" :class="getImpactStyle(id, deviation)">
@@ -156,12 +187,15 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 										<template #content>
 											{{ i18n.baseText('insights.banner.failureRate.deviation.tooltip') }}
 										</template>
-										{{ smartDecimal(Math.abs(deviation)).toLocaleString('en-US')
-										}}{{ deviationUnit }}
+										{{
+											id === 'timeSaved' && typeof rawDeviation === 'number'
+												? formatInsightsTimeSavedLabel(Math.abs(rawDeviation))
+												: `${smartDecimal(Math.abs(deviation)).toLocaleString('en-US')}${deviationUnit}`
+										}}
 									</N8nTooltip>
 								</small>
 							</span>
-						</RouterLink>
+						</component>
 					</N8nTooltip>
 				</li>
 			</ul>
@@ -209,7 +243,8 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 			}
 		}
 
-		a {
+		a,
+		.staticSummary > li > span > div {
 			display: grid;
 			align-items: center;
 			align-content: center;

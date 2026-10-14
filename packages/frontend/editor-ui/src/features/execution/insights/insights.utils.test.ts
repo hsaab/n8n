@@ -140,6 +140,8 @@ describe('Insights Transformers', () => {
 					deviation: 10,
 					deviationUnit: '%',
 					unit: '',
+					rawValue: 110,
+					rawDeviation: 10,
 				},
 				{
 					id: 'failed',
@@ -147,6 +149,8 @@ describe('Insights Transformers', () => {
 					deviation: 25,
 					deviationUnit: '%',
 					unit: '',
+					rawValue: 5,
+					rawDeviation: 1,
 				},
 				{
 					id: 'failureRate',
@@ -154,6 +158,8 @@ describe('Insights Transformers', () => {
 					deviation: 1,
 					deviationUnit: 'pp',
 					unit: '%',
+					rawValue: 0.05,
+					rawDeviation: 0.01,
 				},
 				{
 					id: 'timeSaved',
@@ -161,6 +167,8 @@ describe('Insights Transformers', () => {
 					deviation: 2,
 					deviationUnit: 'h',
 					unit: 'h',
+					rawValue: 1200,
+					rawDeviation: 120,
 				},
 				{
 					id: 'averageRunTime',
@@ -168,6 +176,8 @@ describe('Insights Transformers', () => {
 					deviation: 1,
 					deviationUnit: 's',
 					unit: 's',
+					rawValue: 5000,
+					rawDeviation: 1000,
 				},
 			];
 
@@ -209,6 +219,8 @@ describe('Insights Transformers', () => {
 					deviation: null,
 					deviationUnit: '',
 					unit: '',
+					rawValue: 100,
+					rawDeviation: null,
 				},
 				{
 					id: 'failed',
@@ -216,6 +228,8 @@ describe('Insights Transformers', () => {
 					deviation: 25,
 					deviationUnit: '%',
 					unit: '',
+					rawValue: 5,
+					rawDeviation: 1,
 				},
 				{
 					id: 'failureRate',
@@ -223,6 +237,8 @@ describe('Insights Transformers', () => {
 					deviation: null,
 					deviationUnit: '',
 					unit: '%',
+					rawValue: 0.1,
+					rawDeviation: null,
 				},
 				{
 					id: 'timeSaved',
@@ -230,6 +246,8 @@ describe('Insights Transformers', () => {
 					deviation: null,
 					deviationUnit: '',
 					unit: 'm',
+					rawValue: 30,
+					rawDeviation: null,
 				},
 				{
 					id: 'averageRunTime',
@@ -237,6 +255,8 @@ describe('Insights Transformers', () => {
 					deviation: 0.5,
 					deviationUnit: 's',
 					unit: 's',
+					rawValue: 2000,
+					rawDeviation: 500,
 				},
 			];
 			expect(transformInsightsSummary(summaryData)).toEqual(expectedOutput);

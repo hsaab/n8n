@@ -1,0 +1,9 @@
+import { z } from 'zod';
+
+import { Z } from '../../zod-class';
+
+export class InsightsAnalystChatRequestDto extends Z.class({
+	message: z.string().trim().min(1).max(2_000),
+	startDate: z.coerce.date().optional(),
+	endDate: z.coerce.date().optional(),
+}) {}
