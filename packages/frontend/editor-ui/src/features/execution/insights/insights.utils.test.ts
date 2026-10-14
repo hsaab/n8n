@@ -8,6 +8,7 @@ import {
 	transformInsightsValues,
 	transformInsightsDeviation,
 	transformInsightsSummary,
+	formatInsightsTimeSavedLabel,
 	formatDateRange,
 	getMatchingPreset,
 	timeRangeMappings,
@@ -20,6 +21,19 @@ import {
 } from '@/features/execution/insights/insights.constants';
 
 describe('Insights Transformers', () => {
+	describe('formatInsightsTimeSavedLabel', () => {
+		it('keeps values under 60 minutes in minutes', () => {
+			expect(formatInsightsTimeSavedLabel(30)).toBe('30m');
+			expect(formatInsightsTimeSavedLabel(-30)).toBe('-30m');
+		});
+
+		it('switches to hours at 60 minutes', () => {
+			expect(formatInsightsTimeSavedLabel(60)).toBe('1h');
+			expect(formatInsightsTimeSavedLabel(90)).toBe('2h');
+			expect(formatInsightsTimeSavedLabel(-90)).toBe('-1h');
+		});
+	});
+
 	describe('transformInsightsTimeSaved', () => {
 		it('should return minutes if absolute value is less than 60', () => {
 			expect(transformInsightsTimeSaved(30)).toBe(30);

@@ -8,6 +8,7 @@ import { InstanceSettings } from 'n8n-core';
 
 import { InsightsModule } from '../insights.module';
 import { InsightsService } from '../insights.service';
+import { InsightsAnalystSeed } from '../analyst/insights-analyst.seed';
 
 describe('InsightsModule', () => {
 	let insightsModule: InsightsModule;
@@ -40,6 +41,7 @@ describe('InsightsModule', () => {
 				Container.get(Logger),
 			),
 		);
+		Container.set(InsightsAnalystSeed, mock<InsightsAnalystSeed>());
 		insightsModule = Container.get(InsightsModule);
 		await createTeamProject();
 	});

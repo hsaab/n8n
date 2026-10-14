@@ -10,12 +10,37 @@ import type { InsightsDateRange, InsightsSummary, InsightsSummaryType } from '@n
 import type { DateRange } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import dateformat from 'dateformat';
+import { smartDecimal } from '@n8n/utils/number/smartDecimal';
 
 const DATE_FORMAT_DAY_MONTH_YEAR = 'd mmm, yyyy';
 const DATE_FORMAT_DAY_MONTH = 'd mmm';
 
 export const transformInsightsTimeSaved = (minutes: number): number =>
 	Math.round(minutes / (Math.abs(minutes) < 60 ? 1 : 60)); // we want to show saved time in minutes or hours
+
+export type InsightsTimeSavedUnits = {
+	minutes: string;
+	hours: string;
+};
+
+const DEFAULT_TIME_SAVED_UNITS: InsightsTimeSavedUnits = {
+	minutes: 'm',
+	hours: 'h',
+};
+
+/**
+ * Formats a raw minute count as the shared time-saved label (`12m`, `2h`).
+ * Pass i18n unit strings from `insights.timeSaved.unit.*` in Vue components.
+ */
+export const formatInsightsTimeSavedLabel = (
+	minutes: number,
+	units: InsightsTimeSavedUnits = DEFAULT_TIME_SAVED_UNITS,
+): string => {
+	const shown = transformInsightsTimeSaved(minutes);
+	const unit = Math.abs(minutes) < 60 ? units.minutes : units.hours;
+	const sign = shown < 0 ? '-' : '';
+	return `${sign}${smartDecimal(Math.abs(shown)).toLocaleString('en-US')}${unit}`;
+};
 export const transformInsightsAverageRunTime = (ms: number): number => ms / 1000; // we want to show average run time in seconds
 export const transformInsightsFailureRate = (value: number): number => value * 100; // we want to show failure rate in percentage
 

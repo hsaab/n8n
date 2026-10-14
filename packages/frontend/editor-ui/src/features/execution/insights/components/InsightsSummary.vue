@@ -14,13 +14,32 @@ import { smartDecimal } from '@n8n/utils/number/smartDecimal';
 import { computed, useCssModule } from 'vue';
 import { I18nT } from 'vue-i18n';
 import { useRoute } from 'vue-router';
-import { formatDateRange, getMatchingPreset, getTimeRangeLabels } from '../insights.utils';
+import {
+	formatDateRange,
+	formatInsightsTimeSavedLabel,
+	getMatchingPreset,
+	getTimeRangeLabels,
+} from '../insights.utils';
 
-const props = defineProps<{
-	summary: InsightsSummaryDisplay;
-	startDate?: DateValue;
-	endDate?: DateValue;
-	loading?: boolean;
+const props = withDefaults(
+	defineProps<{
+		summary: InsightsSummaryDisplay;
+		startDate?: DateValue;
+		endDate?: DateValue;
+		loading?: boolean;
+		linkVariant?: 'route' | 'static';
+		activeId?: keyof InsightsSummary;
+		/** When true, time-saved value and deviation are raw minutes and use formatInsightsTimeSavedLabel. */
+		timeSavedAsMinutes?: boolean;
+	}>(),
+	{
+		linkVariant: 'route',
+		timeSavedAsMinutes: false,
+	},
+);
+
+const emit = defineEmits<{
+	select: [id: keyof InsightsSummary];
 }>();
 
 const i18n = useI18n();
@@ -82,6 +101,21 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 		referrer: route.name === VIEWS.INSIGHTS ? 'Dashboard' : 'Overview',
 	});
 };
+
+const timeSavedUnits = computed(() => ({
+	minutes: i18n.baseText('insights.timeSaved.unit.minutes'),
+	hours: i18n.baseText('insights.timeSaved.unit.hours'),
+}));
+
+const timeSavedLabel = (minutes: number) =>
+	formatInsightsTimeSavedLabel(minutes, timeSavedUnits.value);
+
+const onSummaryClick = (id: keyof InsightsSummary) => {
+	trackTabClick(id);
+	if (props.linkVariant === 'static') {
+		emit('select', id);
+	}
+};
 </script>
 
 <template>
@@ -110,7 +144,12 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 								</template>
 							</I18nT>
 						</template>
-						<RouterLink :to="to" :exact-active-class="$style.activeTab" @click="trackTabClick(id)">
+						<RouterLink
+							v-if="linkVariant !== 'static'"
+							:to="to"
+							:exact-active-class="$style.activeTab"
+							@click="onSummaryClick(id)"
+						>
 							<strong>
 								<N8nTooltip placement="bottom" :disabled="id !== 'timeSaved'">
 									<template #content>
@@ -162,6 +201,67 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 								</small>
 							</span>
 						</RouterLink>
+						<button
+							v-else
+							type="button"
+							:class="[$style.summaryControl, { [$style.activeTab]: activeId === id }]"
+							@click="onSummaryClick(id)"
+						>
+							<strong>
+								<N8nTooltip placement="bottom" :disabled="id !== 'timeSaved'">
+									<template #content>
+										{{ i18n.baseText('insights.banner.title.timeSaved.tooltip') }}
+									</template>
+									{{ summaryTitles[id] }}
+								</N8nTooltip>
+							</strong>
+							<small :class="$style.days">
+								{{ displayDateRangeLabel }}
+							</small>
+							<span v-if="value === 0 && id === 'timeSaved'" :class="$style.empty">
+								<em>--</em>
+								<small>
+									<N8nTooltip placement="bottom">
+										<template #content>
+											<I18nT keypath="insights.banner.timeSaved.tooltip" scope="global">
+												<template #link>{{
+													i18n.baseText('insights.banner.timeSaved.tooltip.link.text')
+												}}</template>
+											</I18nT>
+										</template>
+										<N8nIcon :class="$style.icon" icon="info" size="medium" />
+									</N8nTooltip>
+								</small>
+							</span>
+							<span v-else>
+								<em v-if="id === 'timeSaved' && timeSavedAsMinutes">{{ timeSavedLabel(value) }}</em>
+								<em v-else
+									>{{ smartDecimal(value).toLocaleString('en-US') }} <i>{{ unit }}</i></em
+								>
+								<small v-if="deviation !== null" :class="getImpactStyle(id, deviation)">
+									<N8nIcon
+										:class="[$style.icon, getImpactStyle(id, deviation)]"
+										:icon="
+											deviation === 0
+												? 'chevron-right'
+												: deviation > 0
+													? 'chevron-up'
+													: 'chevron-down'
+										"
+									/>
+									<N8nTooltip placement="bottom" :disabled="id !== 'failureRate'">
+										<template #content>
+											{{ i18n.baseText('insights.banner.failureRate.deviation.tooltip') }}
+										</template>
+										{{
+											id === 'timeSaved' && timeSavedAsMinutes
+												? timeSavedLabel(Math.abs(deviation))
+												: `${smartDecimal(Math.abs(deviation)).toLocaleString('en-US')}${deviationUnit}`
+										}}
+									</N8nTooltip>
+								</small>
+							</span>
+						</button>
 					</N8nTooltip>
 				</li>
 			</ul>
@@ -209,7 +309,8 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 			}
 		}
 
-		a {
+		a,
+		button.summaryControl {
 			display: grid;
 			align-items: center;
 			align-content: center;
@@ -217,7 +318,12 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 			height: 100%;
 			padding: var(--spacing--3xs) var(--spacing--lg) 0;
 			background-color: var(--background--surface);
+			border: 0;
 			border-bottom: 3px solid transparent;
+			font: inherit;
+			color: inherit;
+			text-align: inherit;
+			cursor: pointer;
 
 			&:hover {
 				background-color: var(--background-hover);
