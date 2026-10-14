@@ -30,6 +30,39 @@ describe('InsightsAnalystChat', () => {
 		expect(queryByTestId('insights-analyst-claude-badge')).toBeNull();
 	});
 
+	it('bolds cited workflow names inside the answer and lists citations', () => {
+		const { container, getByText } = renderComponent({
+			props: {
+				pending: false,
+				messages: [
+					{
+						id: 'assistant-1',
+						role: 'assistant',
+						text: 'Support Triage saved the most time in this range.',
+						response: {
+							answer: 'Support Triage saved the most time in this range.',
+							citations: [
+								{
+									workflowId: 'wf-1',
+									workflowName: 'Support Triage',
+									metric: 'timeSaved',
+									value: 23400,
+								},
+							],
+							mode: 'fallback',
+						},
+					},
+				],
+			},
+		});
+
+		const boldNames = Array.from(container.querySelectorAll('p strong')).map(
+			(node) => node.textContent,
+		);
+		expect(boldNames).toContain('Support Triage');
+		expect(getByText('390h')).toBeTruthy();
+	});
+
 	it('shows the typing indicator while a request is pending', () => {
 		const { getByTestId } = renderComponent({
 			props: {

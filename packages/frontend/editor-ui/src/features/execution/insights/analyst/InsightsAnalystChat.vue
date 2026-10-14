@@ -5,7 +5,10 @@ import { computed, ref } from 'vue';
 
 import ChatInputBase from '@/features/ai/shared/components/ChatInputBase.vue';
 import ChatTypingIndicator from '@/features/ai/chatHub/components/ChatTypingIndicator.vue';
-import { formatAnalystMetric } from '@/features/execution/insights/analyst/insights-analyst.format';
+import {
+	emphasizeWorkflowNames,
+	formatAnalystMetric,
+} from '@/features/execution/insights/analyst/insights-analyst.format';
 import type { AnalystChatMessage } from '@/features/execution/insights/analyst/insights-analyst.store';
 
 const props = defineProps<{
@@ -52,6 +55,13 @@ function send(message = draft.value) {
 function citationLabel(citation: InsightsAnalystCitation) {
 	return formatAnalystMetric(citation.metric, citation.value, units.value, copy.value);
 }
+
+/** Bold cited workflow names inside assistant answers; user messages render as-is. */
+function textSegments(message: AnalystChatMessage) {
+	if (message.role !== 'assistant') return [{ text: message.text, emphasized: false }];
+	const names = message.response?.citations.map((citation) => citation.workflowName) ?? [];
+	return emphasizeWorkflowNames(message.text, names);
+}
 </script>
 
 <template>
@@ -69,16 +79,26 @@ function citationLabel(citation: InsightsAnalystCitation) {
 				:key="message.id"
 				:class="[$style.message, message.role === 'user' ? $style.user : $style.assistant]"
 			>
-				<p>{{ message.text }}</p>
-				<ul v-if="message.response?.citations.length">
-					<li
-						v-for="citation in message.response.citations"
-						:key="citation.workflowId + citation.metric"
-					>
-						<strong>{{ citation.workflowName }}</strong>
-						<span>{{ citationLabel(citation) }}</span>
-					</li>
-				</ul>
+				<p :class="$style.text">
+					<template v-for="(segment, index) in textSegments(message)" :key="index">
+						<strong v-if="segment.emphasized">{{ segment.text }}</strong>
+						<template v-else>{{ segment.text }}</template>
+					</template>
+				</p>
+				<div v-if="message.response?.citations.length" :class="$style.citations">
+					<p :class="$style.citationsLabel">
+						{{ i18n.baseText('insights.analyst.chat.citations') }}
+					</p>
+					<ul>
+						<li
+							v-for="citation in message.response.citations"
+							:key="citation.workflowId + citation.metric"
+						>
+							<strong :class="$style.citationName">{{ citation.workflowName }}</strong>
+							<strong :class="$style.citationValue">{{ citationLabel(citation) }}</strong>
+						</li>
+					</ul>
+				</div>
 				<small
 					v-if="message.response?.mode === 'llm'"
 					:class="$style.badge"
@@ -189,14 +209,27 @@ function citationLabel(citation: InsightsAnalystCitation) {
 .message {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--2xs);
+	gap: var(--spacing--xs);
 	max-width: 100%;
 	padding: var(--spacing--sm);
 	border-radius: var(--radius--2xs);
+	font-size: var(--font-size--sm);
+	line-height: var(--line-height--xl);
+}
 
-	p {
-		margin: 0;
+.text {
+	margin: 0;
+
+	strong {
+		color: var(--color--text);
+		font-weight: var(--font-weight--bold);
 	}
+}
+
+.citations {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--3xs);
 
 	ul {
 		display: flex;
@@ -209,18 +242,47 @@ function citationLabel(citation: InsightsAnalystCitation) {
 
 	li {
 		display: flex;
+		align-items: baseline;
 		justify-content: space-between;
 		gap: var(--spacing--xs);
 		padding: var(--spacing--2xs) var(--spacing--xs);
+		border: var(--border);
 		border-radius: var(--radius--2xs);
 		background: var(--background--surface);
 	}
 }
 
+.citationsLabel {
+	margin: 0;
+	color: var(--color--text--tint-1);
+	font-size: var(--font-size--2xs);
+	font-weight: var(--font-weight--bold);
+	letter-spacing: var(--letter-spacing--wider);
+	text-transform: uppercase;
+}
+
+.citationName {
+	min-width: 0;
+	overflow: hidden;
+	color: var(--color--text);
+	font-weight: var(--font-weight--bold);
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.citationValue {
+	flex-shrink: 0;
+	color: var(--color--primary);
+	font-weight: var(--font-weight--bold);
+	font-variant-numeric: tabular-nums;
+}
+
 .user {
 	align-self: flex-end;
+	max-width: 85%;
 	background: var(--color--background--light-3);
 	color: var(--color--text);
+	font-weight: var(--font-weight--medium);
 }
 
 .assistant {

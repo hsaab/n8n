@@ -11,6 +11,29 @@ type MetricCopy = {
 	averageRunTime: (seconds: string) => string;
 };
 
+export type AnalystTextSegment = { text: string; emphasized: boolean };
+
+function escapeRegExp(value: string): string {
+	return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * Splits an answer into plain and emphasized segments so cited workflow names
+ * can be rendered in bold. Longer names are matched first to avoid partial hits.
+ */
+export function emphasizeWorkflowNames(text: string, names: string[]): AnalystTextSegment[] {
+	const uniqueNames = [...new Set(names.filter((name) => name.trim().length > 0))].sort(
+		(a, b) => b.length - a.length,
+	);
+	if (uniqueNames.length === 0) return [{ text, emphasized: false }];
+
+	const matcher = new RegExp(`(${uniqueNames.map(escapeRegExp).join('|')})`, 'g');
+	return text
+		.split(matcher)
+		.filter((segment) => segment.length > 0)
+		.map((segment) => ({ text: segment, emphasized: uniqueNames.includes(segment) }));
+}
+
 export function formatAnalystMetric(
 	metric: InsightsAnalystMetric,
 	value: number,

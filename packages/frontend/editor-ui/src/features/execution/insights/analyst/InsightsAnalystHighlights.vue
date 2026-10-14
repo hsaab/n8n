@@ -102,8 +102,9 @@ function metricLabel(highlight: InsightsAnalystHighlight) {
 .kicker {
 	margin: 0;
 	color: var(--color--text);
-	font-size: var(--font-size--sm);
+	font-size: var(--font-size--lg);
 	font-weight: var(--font-weight--bold);
+	line-height: var(--line-height--md);
 }
 
 .description {

@@ -5290,6 +5290,7 @@
 	"insights.analyst.chat.welcome": "Ask a question about the demo workspace. I'll cite workflows and metrics from Insights.",
 	"insights.analyst.chat.placeholder": "Ask about workflow performance",
 	"insights.analyst.chat.badge": "Powered by Claude",
+	"insights.analyst.chat.citations": "Cited workflows",
 	"insights.analyst.chat.prompt.timeSaved": "Which workflows saved us the most time?",
 	"insights.analyst.chat.prompt.failures": "Why did failures increase?",
 	"insights.analyst.chat.prompt.review": "Summarize this for an ops review.",
