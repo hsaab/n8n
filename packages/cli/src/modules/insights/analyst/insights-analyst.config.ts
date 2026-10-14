@@ -12,8 +12,8 @@ export class InsightsAnalystConfig {
 
 	/**
 	 * Anthropic model id used by Insights Analyst chat.
-	 * Default: claude-opus-4-7-20260101
+	 * Default: claude-sonnet-4-5-20250929
 	 */
 	@Env('N8N_INSIGHTS_ANALYST_MODEL')
-	anthropicModel: string = 'claude-opus-4-7-20260101';
+	anthropicModel: string = 'claude-sonnet-4-5-20250929';
 }

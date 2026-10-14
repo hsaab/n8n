@@ -59,7 +59,6 @@ describe('InsightsAnalystService chat', () => {
 
 		const config = new InsightsAnalystConfig();
 		config.anthropicApiKey = apiKey;
-		config.anthropicModel = 'claude-opus-4-7-20260101';
 
 		return new InsightsAnalystService(insightsService, projectRepository, config, rootLogger);
 	}
