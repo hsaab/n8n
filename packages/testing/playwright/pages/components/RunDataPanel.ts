@@ -80,7 +80,7 @@ export class RunDataPanel {
 	}
 
 	getMaskedValueMarkers() {
-		return this.root.getByTestId('ndv-masked-value');
+		return this.root.getByTestId('ndv-masked-field');
 	}
 
 	getJsonDataContainer() {
