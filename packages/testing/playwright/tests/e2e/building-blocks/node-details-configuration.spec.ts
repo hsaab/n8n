@@ -88,5 +88,28 @@ test.describe(
 
 			await expect(n8n.ndv.getAssignments('assignments')).toHaveCount(4);
 		});
+
+		test('should mask sensitive fields in Edit Fields output', async ({ n8n }) => {
+			await n8n.canvas.addNode('Manual Trigger');
+			await n8n.canvas.addNode('Edit Fields (Set)');
+
+			await n8n.ndv.editFields.setFieldsValues([
+				{ name: 'user', type: 'string', value: 'alice' },
+				{ name: 'password', type: 'string', value: 'hunter2' },
+				{ name: 'token', type: 'string', value: 'abc123' },
+			]);
+			await n8n.ndv.addParameterOptionByName('Mask Sensitive Fields');
+			await n8n.ndv.setParameterSwitch('maskSensitiveFields', true);
+
+			await n8n.ndv.execute();
+			await n8n.ndv.outputPanel.switchDisplayMode('table');
+
+			const outputPanel = n8n.ndv.outputPanel;
+			await expect(outputPanel.getTbodyCell(0, 0)).toHaveText('alice');
+			await expect(outputPanel.getTbodyCell(0, 1)).toContainText('***');
+			await expect(outputPanel.getTbodyCell(0, 2)).toContainText('***');
+			await expect(outputPanel.getMaskedValueMarkers().first()).toBeVisible();
+			await expect(outputPanel.getMaskedValueMarkers().nth(1)).toBeVisible();
+		});
 	},
 );

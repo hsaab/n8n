@@ -14,6 +14,8 @@ import Draggable from '@/app/components/Draggable.vue';
 import MappingPill from './MappingPill.vue';
 import TextWithHighlights from './TextWithHighlights.vue';
 import BinaryEntryDataTable from './BinaryEntryDataTable.vue';
+import MaskedValueMarker from './MaskedValueMarker.vue';
+import { isMaskedValue, isMaskingEnabled } from '../maskedValue';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useExecutionHelpers } from '@/features/execution/executions/composables/useExecutionHelpers';
@@ -95,6 +97,7 @@ const canDraggableDrop = computed(() => ndvStore.canDraggableDrop);
 const draggableStickyPosition = computed(() => ndvStore.draggableStickyPos);
 const pairedItemMappings = computed(() => workflowsStore.workflowExecutionPairedItemMappings);
 const tableData = computed(() => convertToTable(props.inputData));
+const maskingEnabled = computed(() => isMaskingEnabled(props.node));
 const collapsingColumnIndex = computed(() => {
 	if (!props.collapsingColumnName) {
 		return -1;
@@ -722,12 +725,14 @@ watch(
 						@mouseenter="onMouseEnterCell"
 						@mouseleave="onMouseLeaveCell"
 					>
-						<TextWithHighlights
-							v-if="isSimple(data)"
-							:content="getValueToRender(data)"
-							:search="search"
-							:class="{ [$style.value]: true, [$style.empty]: isEmpty(data) }"
-						/>
+						<template v-if="isSimple(data)">
+							<TextWithHighlights
+								:content="getValueToRender(data)"
+								:search="search"
+								:class="{ [$style.value]: true, [$style.empty]: isEmpty(data) }"
+							/>
+							<MaskedValueMarker v-if="isMaskedValue(maskingEnabled, data)" />
+						</template>
 						<N8nTree v-else-if="isObject(data)" :node-class="$style.nodeClass" :value="data">
 							<template #label="{ label, path }">
 								<TextWithHighlights
@@ -758,6 +763,7 @@ watch(
 									:search="search"
 									:class="{ [$style.nestedValue]: true, [$style.empty]: isEmpty(value) }"
 								/>
+								<MaskedValueMarker v-if="isMaskedValue(maskingEnabled, value)" />
 							</template>
 						</N8nTree>
 					</td>

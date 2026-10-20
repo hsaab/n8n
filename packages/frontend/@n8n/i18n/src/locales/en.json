@@ -2796,6 +2796,8 @@
 	"runData.emptyString": "empty",
 	"runData.emptyObject": "{'{empty object}'}",
 	"runData.unnamedField": "[Unnamed field]",
+	"runData.maskedValue": "Masked",
+	"runData.maskedValue.tooltip": "This value was masked by the node's \"Mask Sensitive Fields\" option",
 	"runData.switchToBinary.info": "This item only has",
 	"runData.switchToBinary.binary": "binary data",
 	"runData.linking.hint": "Link displayed input and output runs",

@@ -13,6 +13,8 @@ import { getMappedExpression } from '@/app/utils/mappingUtils';
 import { nonExistingJsonPath } from '@/app/constants';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import TextWithHighlights from './TextWithHighlights.vue';
+import MaskedValueMarker from './MaskedValueMarker.vue';
+import { isMaskedValue, isMaskingEnabled } from '../maskedValue';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useElementSize } from '@vueuse/core';
 import { useTelemetryContext } from '@/app/composables/useTelemetryContext';
@@ -57,6 +59,7 @@ const jsonDataContainer = ref(null);
 const { height } = useElementSize(jsonDataContainer);
 
 const jsonData = computed(() => executionDataToJson(props.inputData));
+const maskingEnabled = computed(() => isMaskingEnabled(props.node));
 
 const highlight = computed(() => ndvStore.highlightDraggables);
 
@@ -208,6 +211,7 @@ const getListItemName = (path: string) => {
 						}"
 						class="ph-no-capture"
 					/>
+					<MaskedValueMarker v-if="isMaskedValue(maskingEnabled, node.content)" />
 				</template>
 			</VueJsonPretty>
 		</Draggable>

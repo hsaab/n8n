@@ -79,6 +79,10 @@ export class RunDataPanel {
 		return this.getTbodyCell(row, col).locator(`span[data-name="${dataName}"]`).first();
 	}
 
+	getMaskedValueMarkers() {
+		return this.root.getByTestId('ndv-masked-value');
+	}
+
 	getJsonDataContainer() {
 		return this.root.locator('.json-data');
 	}
