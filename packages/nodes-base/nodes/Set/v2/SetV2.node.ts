@@ -10,6 +10,11 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 
 import type { IncludeMods, SetField, SetNodeOptions } from './helpers/interfaces';
 import { INCLUDE } from './helpers/interfaces';
+import {
+	DEFAULT_SENSITIVE_FIELD_NAMES,
+	maskSensitiveFields,
+	parseSensitiveFieldNames,
+} from './helpers/utils';
 import * as manual from './manual.mode';
 import * as raw from './raw.mode';
 
@@ -20,7 +25,7 @@ const versionDescription: INodeTypeDescription = {
 	name: 'set',
 	iconColor: 'blue',
 	group: ['input'],
-	version: [3, 3.1, 3.2, 3.3, 3.4],
+	version: [3, 3.1, 3.2, 3.3, 3.4, 3.5],
 	description: 'Modify, add, or remove item fields',
 	subtitle: '={{$parameter["mode"]}}',
 	defaults: {
@@ -291,6 +296,34 @@ const versionDescription: INodeTypeDescription = {
 					description:
 						'By default, dot-notation is used in property names. This means that "a.b" will set the property "b" underneath "a" so { "a": { "b": value} }. If that is not intended this can be deactivated, it will then set { "a.b": value } instead.',
 				},
+				{
+					displayName: 'Mask Sensitive Fields',
+					name: 'maskSensitiveFields',
+					type: 'boolean',
+					default: false,
+					description:
+						'Whether to replace the values of the listed fields with *** in the output, including nested fields',
+					displayOptions: {
+						show: {
+							'@version': [{ _cnd: { gte: 3.5 } }],
+						},
+					},
+				},
+				{
+					displayName: 'Sensitive Field Names',
+					name: 'sensitiveFieldNames',
+					type: 'string',
+					default: DEFAULT_SENSITIVE_FIELD_NAMES,
+					placeholder: 'e.g. password, token, apiKey',
+					description:
+						'Comma-separated list of field names whose values are masked. Matches keys at any depth.',
+					displayOptions: {
+						show: {
+							'@version': [{ _cnd: { gte: 3.5 } }],
+							maskSensitiveFields: [true],
+						},
+					},
+				},
 			],
 		},
 	],
@@ -357,6 +390,14 @@ export class SetV2 implements INodeType {
 				rawData,
 				node,
 			);
+
+			if (options.maskSensitiveFields === true && newItem.json) {
+				const fieldNames =
+					typeof options.sensitiveFieldNames === 'string'
+						? options.sensitiveFieldNames
+						: DEFAULT_SENSITIVE_FIELD_NAMES;
+				newItem.json = maskSensitiveFields(newItem.json, parseSensitiveFieldNames(fieldNames));
+			}
 
 			if (duplicateItem && this.getMode() === 'manual') {
 				const duplicateCount = this.getNodeParameter('duplicateCount', 0, 0) as number;

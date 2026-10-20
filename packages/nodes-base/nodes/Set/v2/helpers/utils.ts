@@ -234,6 +234,45 @@ export function resolveRawData(
 	return returnData;
 }
 
+export const MASKED_VALUE = '***';
+
+export const DEFAULT_SENSITIVE_FIELD_NAMES = 'password, token';
+
+export function parseSensitiveFieldNames(fieldNames: string | undefined): string[] {
+	return (fieldNames ?? '')
+		.split(',')
+		.map((name) => name.trim())
+		.filter((name) => name.length > 0);
+}
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+	value !== null && typeof value === 'object' && !Array.isArray(value);
+
+function maskInPlace(value: unknown, fieldNames: Set<string>) {
+	if (Array.isArray(value)) {
+		for (const entry of value) maskInPlace(entry, fieldNames);
+		return;
+	}
+
+	if (!isRecord(value)) return;
+
+	for (const key of Object.keys(value)) {
+		if (fieldNames.has(key)) {
+			value[key] = MASKED_VALUE;
+		} else {
+			maskInPlace(value[key], fieldNames);
+		}
+	}
+}
+
+/** Returns a copy of `json` where every key listed in `fieldNames`, at any depth, holds `***`. */
+export function maskSensitiveFields(json: IDataObject, fieldNames: string[]): IDataObject {
+	if (!fieldNames.length) return json;
+	const masked = deepCopy(json);
+	maskInPlace(masked, new Set(fieldNames));
+	return masked;
+}
+
 export function prepareReturnItem(
 	context: IExecuteFunctions | ISupplyDataFunctions,
 	value: AssignmentCollectionValue,
