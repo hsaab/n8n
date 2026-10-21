@@ -161,7 +161,7 @@ const onValueDrop = async (droppedExpression: string) => {
 			[$style.hasIssues]: issues.length > 0,
 			[$style.hasHint]: !!hint,
 		}"
-		data-test-id="assignment"
+		data-test-id="assignment-row"
 	>
 		<N8nIconButton
 			variant="ghost"
