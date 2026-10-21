@@ -52,7 +52,6 @@ jobs:
       - name: Install Playwright Chromium
         run: pnpm --filter=n8n-playwright exec playwright install chromium --with-deps
 
-      # 8 tests, including the Edit Fields masking test when that test is on the branch.
       # retries 0 so a failed selector stays failed. workers 1 keeps one local n8n server.
       - name: Run node details configuration
         run: pnpm --filter=n8n-playwright test:local tests/e2e/building-blocks/node-details-configuration.spec.ts --reporter=list --retries=0 --workers=1
