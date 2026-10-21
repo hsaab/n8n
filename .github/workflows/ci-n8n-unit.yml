@@ -1,4 +1,4 @@
-name: 'CI: Forcepoint unit'
+name: 'CI: n8n unit'
 
 # Small check for pull requests into forcepoint-demo.
 # GitHub-hosted runners only. Does not use the n8n CLA GitHub App,
@@ -15,7 +15,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: forcepoint-unit-${{ github.event.pull_request.number || github.ref }}
+  group: n8n-unit-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
