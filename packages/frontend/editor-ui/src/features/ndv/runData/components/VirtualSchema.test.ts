@@ -419,6 +419,31 @@ describe('VirtualSchema.vue', () => {
 		expect(within(items[0]).getByTestId('ndv-masked-value')).toBeInTheDocument();
 	});
 
+	it('shows the masked marker only for fields still listed in Fields to Mask', async () => {
+		const { getAllByTestId } = renderComponent({
+			props: {
+				nodes: [],
+				paneType: 'output',
+				node: {
+					...maskedSetNode,
+					parameters: { options: { maskSensitiveFields: true, fieldsToMask: 'password' } },
+				},
+				data: [{ password: '***', token: '***', creds: { token: '***' } }],
+			},
+		});
+
+		let items: HTMLElement[] = [];
+		await waitFor(() => {
+			items = getAllByTestId('run-data-schema-item');
+			expect(items).toHaveLength(4);
+		});
+
+		const markers = getAllByTestId('ndv-masked-value');
+		expect(markers).toHaveLength(1);
+		expect(items[0]).toHaveTextContent('password***');
+		expect(items[0]).toContainElement(markers[0]);
+	});
+
 	it('renders schema with spaces and dots', async () => {
 		pinData(mockNode1, [
 			{

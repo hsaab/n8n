@@ -54,6 +54,16 @@ const renderComponent = createComponentRenderer(RunDataJson, {
 	},
 });
 
+const maskedSetNode: INodeUi = {
+	parameters: { options: { maskSensitiveFields: true } },
+	id: '5d2b7e1a-0c4f-4b8e-9a61-2f3c8d9e7b10',
+	name: 'Edit Fields',
+	type: SET_NODE_TYPE,
+	typeVersion: 3.5,
+	position: [380, 1060],
+	disabled: false,
+};
+
 describe('RunDataJson.vue', () => {
 	beforeEach(cleanup);
 
@@ -76,16 +86,6 @@ describe('RunDataJson.vue', () => {
 	});
 
 	it('shows a "Masked" marker on the same line as a masked value', async () => {
-		const maskedSetNode: INodeUi = {
-			parameters: { options: { maskSensitiveFields: true } },
-			id: '5d2b7e1a-0c4f-4b8e-9a61-2f3c8d9e7b10',
-			name: 'Edit Fields',
-			type: SET_NODE_TYPE,
-			typeVersion: 3.5,
-			position: [380, 1060],
-			disabled: false,
-		};
-
 		renderComponent({
 			props: {
 				node: maskedSetNode,
@@ -101,5 +101,25 @@ describe('RunDataJson.vue', () => {
 		const marker = screen.getByTestId('ndv-masked-value');
 		expect(maskedLine).toContainElement(marker);
 		expect(marker).toHaveTextContent('Masked');
+	});
+
+	it('shows the "Masked" marker only for fields still listed in Fields to Mask', async () => {
+		renderComponent({
+			props: {
+				node: {
+					...maskedSetNode,
+					parameters: { options: { maskSensitiveFields: true, fieldsToMask: 'password' } },
+				},
+				inputData: [{ json: { password: '***', token: '***', creds: { token: '***' } } }],
+			},
+			global: {
+				plugins: [createTestingPinia()],
+			},
+		});
+		await flushPromises();
+
+		const markers = screen.getAllByTestId('ndv-masked-value');
+		expect(markers).toHaveLength(1);
+		expect(markers[0].closest('.vjs-tree-node')).toHaveTextContent('"password"');
 	});
 });

@@ -239,6 +239,24 @@ describe('RunDataTable.vue', () => {
 			expect(within(credsCell).getByTestId('ndv-masked-value')).toHaveTextContent('Masked');
 		});
 
+		it('shows the "Masked" marker only for fields still listed in Fields to Mask', () => {
+			const { container, getAllByTestId } = renderComponent({
+				props: {
+					node: {
+						...maskedSetNode,
+						parameters: { options: { maskSensitiveFields: true, fieldsToMask: 'password' } },
+					},
+					inputData: [{ json: { password: '***', token: '***', creds: { token: '***' } } }],
+				},
+			});
+
+			const markers = getAllByTestId('ndv-masked-value');
+			expect(markers).toHaveLength(1);
+
+			const passwordCell = getFirstTableCellForColumn(container as HTMLElement, 'password');
+			expect(passwordCell).toContainElement(markers[0]);
+		});
+
 		it('shows no marker when masking is turned off on the Edit Fields node', () => {
 			const { container, queryByTestId } = renderComponent({
 				props: {

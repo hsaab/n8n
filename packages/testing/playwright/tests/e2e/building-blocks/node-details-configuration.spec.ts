@@ -131,5 +131,63 @@ test.describe(
 				expect(labelTextLeft).toBeGreaterThanOrEqual(iconRight!);
 			}
 		});
+
+		test('should only mark the fields still listed in Fields to Mask', async ({ n8n }) => {
+			await n8n.canvas.addNode('Manual Trigger');
+			await n8n.canvas.addNode('Edit Fields (Set)');
+
+			await n8n.ndv.editFields.setFieldsValues([
+				{ name: 'password', type: 'string', value: 'secret-value' },
+				{ name: 'token', type: 'string', value: 'plain-token-value' },
+				{ name: 'creds.token', type: 'string', value: 'nested-token-value' },
+			]);
+			await n8n.ndv.addParameterOptionByName('Mask Sensitive Fields');
+			await n8n.ndv.setParameterSwitch('maskSensitiveFields', true);
+			await n8n.ndv.execute();
+
+			const markers = n8n.ndv.outputPanel.getMaskedValueMarkers();
+			await expect(markers).toHaveCount(3);
+
+			await n8n.ndv.addParameterOptionByName('Fields to Mask');
+			await n8n.ndv.fillParameterInputByName('fieldsToMask', 'password');
+
+			await expect(markers).toHaveCount(1);
+
+			await n8n.ndv.execute();
+
+			const table = n8n.ndv.outputPanel.getTable();
+			await expect(table).toContainText('plain-token-value');
+			await expect(table).toContainText('nested-token-value');
+			await expect(markers).toHaveCount(1);
+		});
+
+		test('should drop the Masked marker when Mask Sensitive Fields is switched off', async ({
+			n8n,
+		}) => {
+			await n8n.canvas.addNode('Manual Trigger');
+			await n8n.canvas.addNode('Edit Fields (Set)');
+
+			await n8n.ndv.editFields.setFieldsValues([
+				{ name: 'password', type: 'string', value: 'secret-value' },
+				{ name: 'token', type: 'string', value: 'plain-token-value' },
+			]);
+			await n8n.ndv.addParameterOptionByName('Mask Sensitive Fields');
+			await n8n.ndv.setParameterSwitch('maskSensitiveFields', true);
+			await n8n.ndv.execute();
+
+			const markers = n8n.ndv.outputPanel.getMaskedValueMarkers();
+			await expect(markers).toHaveCount(2);
+
+			await n8n.ndv.setParameterSwitch('maskSensitiveFields', false);
+
+			await expect(markers).toHaveCount(0);
+
+			await n8n.ndv.execute();
+
+			const table = n8n.ndv.outputPanel.getTable();
+			await expect(table).toContainText('secret-value');
+			await expect(table).toContainText('plain-token-value');
+			await expect(markers).toHaveCount(0);
+		});
 	},
 );

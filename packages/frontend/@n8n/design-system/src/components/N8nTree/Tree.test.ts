@@ -62,6 +62,26 @@ describe('components', () => {
 			expect(wrapper.html()).toMatchSnapshot();
 		});
 
+		it('should pass the field label to the value slot at every level', () => {
+			const wrapper = render(N8nTree, {
+				props: {
+					value: {
+						password: '***',
+						creds: {
+							token: '***',
+						},
+					},
+				},
+				slots: {
+					value:
+						'<template #value="{ value, label }"><span data-test-id="tree-value">{{ label }}={{ value }}</span></template>',
+				},
+			});
+
+			const values = wrapper.getAllByTestId('tree-value').map((element) => element.textContent);
+			expect(values).toEqual(['password=***', 'token=***']);
+		});
+
 		describe('binary data detection', () => {
 			it('should render binary data with binary slot', () => {
 				const binaryData = {
