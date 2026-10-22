@@ -236,6 +236,7 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
                         </span>
                         
                       </span>
+                      <!--v-if-->
                       
                     </span>
                     <span>
@@ -316,6 +317,7 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
                         </span>
                         
                       </span>
+                      <!--v-if-->
                       
                     </span>
                     <span>
@@ -396,6 +398,7 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
                         </span>
                         
                       </span>
+                      <!--v-if-->
                       
                     </span>
                     <!---->
@@ -626,6 +629,7 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
                         </span>
                         
                       </span>
+                      <!--v-if-->
                       
                     </span>
                     <!---->
@@ -769,6 +773,7 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
                         </span>
                         
                       </span>
+                      <!--v-if-->
                       
                     </span>
                     <span>
@@ -862,6 +867,7 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
                         </span>
                         
                       </span>
+                      <!--v-if-->
                       
                     </span>
                     <span>
@@ -955,6 +961,7 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
                         </span>
                         
                       </span>
+                      <!--v-if-->
                       
                     </span>
                     <span>
@@ -1048,6 +1055,7 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
                         </span>
                         
                       </span>
+                      <!--v-if-->
                       
                     </span>
                     <span>
@@ -1136,6 +1144,7 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
                       >
                         <span />
                       </span>
+                      <!--v-if-->
                       
                     </span>
                     <!---->

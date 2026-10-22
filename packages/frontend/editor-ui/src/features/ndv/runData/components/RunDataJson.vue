@@ -13,6 +13,8 @@ import { getMappedExpression } from '@/app/utils/mappingUtils';
 import { nonExistingJsonPath } from '@/app/constants';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import TextWithHighlights from './TextWithHighlights.vue';
+import MaskedValueMarker from './MaskedValueMarker.vue';
+import { isMaskedValue } from '@/features/ndv/runData/maskedValue';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useElementSize } from '@vueuse/core';
 import { useTelemetryContext } from '@/app/composables/useTelemetryContext';
@@ -208,6 +210,7 @@ const getListItemName = (path: string) => {
 						}"
 						class="ph-no-capture"
 					/>
+					<MaskedValueMarker v-if="isMaskedValue(props.node, node.content)" />
 				</template>
 			</VueJsonPretty>
 		</Draggable>
