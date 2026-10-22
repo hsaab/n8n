@@ -24,13 +24,29 @@ function isPlainObject(value: unknown): value is IDataObject {
 	return prototype === Object.prototype || prototype === null;
 }
 
-function maskNestedValue(value: unknown, fieldNames: Set<string>, maskValue: string): unknown {
+function maskNestedValue(
+	value: unknown,
+	fieldNames: Set<string>,
+	maskValue: string,
+	seen: WeakMap<object, unknown>,
+): unknown {
 	if (Array.isArray(value)) {
-		return value.map((entry) => maskNestedValue(entry, fieldNames, maskValue));
+		if (seen.has(value)) {
+			return seen.get(value);
+		}
+
+		const copy: unknown[] = [];
+		seen.set(value, copy);
+
+		for (const entry of value) {
+			copy.push(maskNestedValue(entry, fieldNames, maskValue, seen));
+		}
+
+		return copy;
 	}
 
 	if (isPlainObject(value)) {
-		return maskObject(value, fieldNames, maskValue);
+		return maskObject(value, fieldNames, maskValue, seen);
 	}
 
 	return value;
@@ -52,8 +68,19 @@ function isJsonValue(value: unknown): value is IDataObject[string] {
 	}
 }
 
-function maskObject(json: IDataObject, fieldNames: Set<string>, maskValue: string): IDataObject {
+function maskObject(
+	json: IDataObject,
+	fieldNames: Set<string>,
+	maskValue: string,
+	seen: WeakMap<object, unknown>,
+): IDataObject {
+	const existing = seen.get(json);
+	if (isPlainObject(existing)) {
+		return existing;
+	}
+
 	const result: IDataObject = {};
+	seen.set(json, result);
 
 	for (const [key, value] of Object.entries(json)) {
 		if (fieldNames.has(key.toLowerCase())) {
@@ -61,7 +88,7 @@ function maskObject(json: IDataObject, fieldNames: Set<string>, maskValue: strin
 			continue;
 		}
 
-		const next = maskNestedValue(value, fieldNames, maskValue);
+		const next = maskNestedValue(value, fieldNames, maskValue, seen);
 		if (isJsonValue(next)) {
 			result[key] = next;
 		} else {
@@ -77,5 +104,10 @@ export function maskJsonValues(
 	fieldNames: string[],
 	maskValue: string,
 ): IDataObject {
-	return maskObject(json, new Set(fieldNames.map((name) => name.toLowerCase())), maskValue);
+	return maskObject(
+		json,
+		new Set(fieldNames.map((name) => name.toLowerCase())),
+		maskValue,
+		new WeakMap(),
+	);
 }

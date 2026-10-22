@@ -404,7 +404,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getAssignments(paramName: string) {
-		return this.getAssignmentCollectionContainer(paramName).getByTestId('assignment');
+		return this.getAssignmentCollectionContainer(paramName).getByTestId('assignment-row');
 	}
 
 	getAssignmentName(paramName: string, index = 0) {

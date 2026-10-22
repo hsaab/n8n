@@ -22,7 +22,7 @@ concurrency:
 jobs:
   node-details:
     name: Node details configuration
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     env:
       NODE_OPTIONS: --max-old-space-size=6144
