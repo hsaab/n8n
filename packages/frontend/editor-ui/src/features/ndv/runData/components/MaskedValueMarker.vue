@@ -18,6 +18,8 @@ const i18n = useI18n();
 	align-items: center;
 	gap: var(--spacing--4xs);
 	margin-left: var(--spacing--3xs);
+	/* N8nTree rows set a negative text-indent that would pull the label over the icon. */
+	text-indent: 0;
 	font-size: var(--font-size--3xs);
 	color: var(--color--text--tint-1);
 }
