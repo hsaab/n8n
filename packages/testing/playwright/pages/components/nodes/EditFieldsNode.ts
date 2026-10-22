@@ -19,7 +19,7 @@ export class EditFieldsNode extends BasePage {
 
 		for (let i = 0; i < fields.length; i++) {
 			await this.ensureFieldExists(container, i);
-			const assignment = container.getByTestId('assignment').nth(i);
+			const assignment = container.getByTestId('assignment-row').nth(i);
 
 			await this.setFieldName(assignment, fields[i].name);
 			await this.setFieldType(assignment, fields[i].type);
@@ -39,12 +39,12 @@ export class EditFieldsNode extends BasePage {
 	private async ensureFieldExists(container: Locator, index: number): Promise<void> {
 		if (index > 0) {
 			await container.getByTestId('assignment-collection-drop-area').click();
-			await container.getByTestId('assignment').nth(index).waitFor({ state: 'visible' });
+			await container.getByTestId('assignment-row').nth(index).waitFor({ state: 'visible' });
 		} else {
-			const existingFields = await container.getByTestId('assignment').count();
+			const existingFields = await container.getByTestId('assignment-row').count();
 			if (existingFields === 0) {
 				await container.getByTestId('assignment-collection-drop-area').click();
-				await container.getByTestId('assignment').first().waitFor({ state: 'visible' });
+				await container.getByTestId('assignment-row').first().waitFor({ state: 'visible' });
 			}
 		}
 	}
