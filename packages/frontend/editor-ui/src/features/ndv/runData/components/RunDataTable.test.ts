@@ -140,6 +140,18 @@ describe('RunDataTable.vue', () => {
 		}
 	});
 
+	it('shows a lock and the word Masked for a value equal to *** and leaves other values as plain text', () => {
+		const inputData = { json: { password: '***', note: 'abc' } };
+
+		const { getByTestId, queryByText, getAllByText } = renderComponent({
+			props: { inputData: [inputData] },
+		});
+
+		expect(getByTestId('ndv-masked-value')).toHaveTextContent('Masked');
+		expect(queryByText('***')).not.toBeInTheDocument();
+		expect(getAllByText('abc')).not.toHaveLength(0);
+	});
+
 	it('only renders `[null]` for empty arrays', () => {
 		const inputData = { json: { null: null } }; // should not render "[null]"
 

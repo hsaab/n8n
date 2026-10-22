@@ -88,5 +88,22 @@ test.describe(
 
 			await expect(n8n.ndv.getAssignments('assignments')).toHaveCount(4);
 		});
+
+		test('shows a lock and the word Masked when a pinned output value is ***', async ({ n8n }) => {
+			await n8n.canvas.addNode('Schedule Trigger');
+
+			await n8n.ndv.setPinnedData([{ password: '***', note: 'hello' }]);
+
+			// Default output view is the table
+			await expect(n8n.ndv.outputPanel.getMaskedValue()).toBeVisible();
+			await expect(n8n.ndv.outputPanel.getMaskedValue()).toContainText('Masked');
+			await expect(n8n.ndv.outputPanel.getTbodyCell(0, 1)).toHaveText('hello');
+
+			await n8n.ndv.outputPanel.switchDisplayMode('json');
+
+			await expect(n8n.ndv.outputPanel.getMaskedValue()).toBeVisible();
+			await expect(n8n.ndv.outputPanel.getMaskedValue()).toContainText('Masked');
+			await expect(n8n.ndv.outputPanel.getJsonPropertyContaining('hello')).toBeVisible();
+		});
 	},
 );

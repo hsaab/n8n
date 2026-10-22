@@ -47,6 +47,10 @@ export class RunDataPanel {
 		return this.root.getByTestId('ndv-pin-data');
 	}
 
+	getMaskedValue() {
+		return this.root.getByTestId('ndv-masked-value');
+	}
+
 	getTable() {
 		return this.root.locator('table');
 	}

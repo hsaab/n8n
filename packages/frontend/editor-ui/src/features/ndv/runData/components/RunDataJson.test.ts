@@ -72,4 +72,20 @@ describe('RunDataJson.vue', () => {
 		expect(screen.getByText('null')).toBeInTheDocument();
 		expect(screen.queryByText('undefined')).not.toBeInTheDocument();
 	});
+
+	it('shows a lock and the word Masked for a value equal to *** and leaves other strings quoted', async () => {
+		renderComponent({
+			props: {
+				inputData: [{ json: { password: '***', note: 'abc' } }],
+			},
+			global: {
+				plugins: [createTestingPinia()],
+			},
+		});
+		await flushPromises();
+
+		expect(screen.getByTestId('ndv-masked-value')).toHaveTextContent('Masked');
+		expect(screen.queryByText('"***"')).not.toBeInTheDocument();
+		expect(screen.getByText('"abc"')).toBeInTheDocument();
+	});
 });
