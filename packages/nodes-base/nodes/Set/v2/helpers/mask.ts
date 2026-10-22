@@ -21,9 +21,7 @@ function isPlainObject(value: unknown): value is IDataObject {
 
 function maskValue(value: IDataObject[string], fields: Set<string>): IDataObject[string] {
 	if (Array.isArray(value)) {
-		return value.map((element: unknown) =>
-			isPlainObject(element) ? maskFields(element, fields) : element,
-		);
+		return value.map((element: IDataObject[string]) => maskValue(element, fields));
 	}
 	return isPlainObject(value) ? maskFields(value, fields) : value;
 }
