@@ -88,5 +88,23 @@ test.describe(
 
 			await expect(n8n.ndv.getAssignments('assignments')).toHaveCount(4);
 		});
+
+		test('should show masked marker for sensitive Edit Fields values', async ({ n8n }) => {
+			await n8n.canvas.addNode('Manual Trigger');
+			await n8n.canvas.addNode('Edit Fields (Set)');
+
+			await n8n.ndv.editFields.setFieldsValues([
+				{ name: 'password', type: 'string', value: 'secret-value' },
+				{ name: 'token', type: 'string', value: 'token-value' },
+			]);
+			await n8n.ndv.addParameterOptionByName('Mask Sensitive Fields');
+			await n8n.ndv.setParameterSwitch('maskSensitiveFields', true);
+			await n8n.ndv.execute();
+
+			await expect(n8n.ndv.outputPanel.getTable()).toContainText('***');
+			const firstMarker = n8n.ndv.outputPanel.getMaskedValueMarkers().first();
+			await expect(firstMarker).toBeVisible();
+			await expect(firstMarker).toContainText('Masked');
+		});
 	},
 );
