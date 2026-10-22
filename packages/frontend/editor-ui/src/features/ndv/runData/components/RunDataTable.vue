@@ -14,6 +14,8 @@ import Draggable from '@/app/components/Draggable.vue';
 import MappingPill from './MappingPill.vue';
 import TextWithHighlights from './TextWithHighlights.vue';
 import BinaryEntryDataTable from './BinaryEntryDataTable.vue';
+import MaskedValueMarker from './MaskedValueMarker.vue';
+import { isMaskedValue } from '@/features/ndv/runData/maskedValue';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useExecutionHelpers } from '@/features/execution/executions/composables/useExecutionHelpers';
@@ -722,12 +724,14 @@ watch(
 						@mouseenter="onMouseEnterCell"
 						@mouseleave="onMouseLeaveCell"
 					>
-						<TextWithHighlights
-							v-if="isSimple(data)"
-							:content="getValueToRender(data)"
-							:search="search"
-							:class="{ [$style.value]: true, [$style.empty]: isEmpty(data) }"
-						/>
+						<template v-if="isSimple(data)">
+							<TextWithHighlights
+								:content="getValueToRender(data)"
+								:search="search"
+								:class="{ [$style.value]: true, [$style.empty]: isEmpty(data) }"
+							/>
+							<MaskedValueMarker v-if="isMaskedValue(props.node, data)" />
+						</template>
 						<N8nTree v-else-if="isObject(data)" :node-class="$style.nodeClass" :value="data">
 							<template #label="{ label, path }">
 								<TextWithHighlights
@@ -758,6 +762,7 @@ watch(
 									:search="search"
 									:class="{ [$style.nestedValue]: true, [$style.empty]: isEmpty(value) }"
 								/>
+								<MaskedValueMarker v-if="isMaskedValue(props.node, value)" />
 							</template>
 						</N8nTree>
 					</td>
