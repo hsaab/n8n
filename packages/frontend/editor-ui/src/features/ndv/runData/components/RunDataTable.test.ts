@@ -269,5 +269,29 @@ describe('RunDataTable.vue', () => {
 			expect(within(passwordCell).getByText('***')).toBeInTheDocument();
 			expect(queryByTestId('ndv-masked-value')).not.toBeInTheDocument();
 		});
+
+		it('should mark values masked for display', () => {
+			const { container, getAllByTestId } = renderComponent({
+				props: {
+					displayMaskedFieldNames: new Set(['password', 'token']),
+					inputData: [
+						{
+							json: { username: 'ada', password: '***', apiKey: '***', creds: { token: '***' } },
+						},
+					],
+				},
+			});
+
+			const markers = getAllByTestId('ndv-masked-value');
+			expect(markers).toHaveLength(2);
+
+			const passwordCell = getFirstTableCellForColumn(container as HTMLElement, 'password');
+			const credsCell = getFirstTableCellForColumn(container as HTMLElement, 'creds');
+			expect(passwordCell).toContainElement(markers[0]);
+			expect(credsCell).toContainElement(markers[1]);
+			expect(getFirstTableCellForColumn(container as HTMLElement, 'username')).toHaveTextContent(
+				'ada',
+			);
+		});
 	});
 });

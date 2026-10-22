@@ -1,8 +1,8 @@
 import { createTestNode } from '@/__tests__/mocks';
 import { SET_NODE_TYPE } from '@/app/constants';
 import type { INodeUi } from '@/Interface';
-import type { NodeParameterValueType } from 'n8n-workflow';
-import { getMaskedFieldNames, isMaskedFieldName, isMaskedValue } from './maskedValue';
+import type { IDataObject, NodeParameterValueType } from 'n8n-workflow';
+import { getMaskedFieldNames, isMaskedFieldName, isMaskedValue, maskFields } from './maskedValue';
 
 const maskedSetNode = createTestNode({
 	name: 'Edit Fields',
@@ -129,5 +129,70 @@ describe('isMaskedFieldName', () => {
 
 	it('does not hide anything when the node masks nothing', () => {
 		expect(isMaskedFieldName(undefined, 'password')).toBe(false);
+	});
+});
+
+describe('maskFields', () => {
+	const names: ReadonlySet<string> = new Set(['password', 'token']);
+
+	it('masks listed fields at any depth of nested objects', () => {
+		const json = {
+			username: 'ada',
+			password: 'demo-password-123',
+			profile: { nickname: 'Ada', session: { token: 'demo-token-456' } },
+		};
+
+		expect(maskFields(json, names)).toEqual({
+			username: 'ada',
+			password: '***',
+			profile: { nickname: 'Ada', session: { token: '***' } },
+		});
+	});
+
+	it('masks listed fields inside arrays of objects and leaves plain array values alone', () => {
+		const json = {
+			accounts: [
+				{ name: 'work', token: 'demo-token-1' },
+				{ name: 'home', token: 'demo-token-2' },
+			],
+			tags: ['password', 'token'],
+		};
+
+		expect(maskFields(json, names)).toEqual({
+			accounts: [
+				{ name: 'work', token: '***' },
+				{ name: 'home', token: '***' },
+			],
+			tags: ['password', 'token'],
+		});
+	});
+
+	it('matches field names case-insensitively', () => {
+		const json = { Password: 'demo-password-123', TOKEN: 'demo-token-456', Username: 'ada' };
+
+		expect(maskFields(json, names)).toEqual({ Password: '***', TOKEN: '***', Username: 'ada' });
+	});
+
+	it('masks the whole value when a listed field holds an object or an array', () => {
+		const json = {
+			token: { access: 'demo-access', refresh: 'demo-refresh' },
+			password: ['old-password', 'new-password'],
+		};
+
+		expect(maskFields(json, names)).toEqual({ token: '***', password: '***' });
+	});
+
+	it('leaves the original item untouched', () => {
+		const json: IDataObject = {
+			password: 'demo-password-123',
+			creds: { token: 'demo-token-456' },
+			accounts: [{ token: 'demo-token-789' }],
+		};
+		const before = structuredClone(json);
+
+		const masked = maskFields(json, names);
+
+		expect(json).toEqual(before);
+		expect(masked).not.toBe(json);
 	});
 });

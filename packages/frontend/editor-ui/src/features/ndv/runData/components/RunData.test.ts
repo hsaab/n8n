@@ -1366,6 +1366,47 @@ describe('RunData', () => {
 		});
 	});
 
+	describe('fields masked for display in the input pane', () => {
+		const displayMaskedFieldNames: ReadonlySet<string> = new Set(['password']);
+
+		it('should search the masked input data', async () => {
+			const { findByTestId, findByText, getByTestId } = render({
+				defaultRunItems: [
+					{ json: { username: 'ada', password: 'demo-password-ada' } },
+					{ json: { username: 'bob', password: 'demo-password-bob' } },
+				],
+				displayMode: 'table',
+				paneType: 'input',
+				displayMaskedFieldNames,
+			});
+
+			await userEvent.type(await findByTestId('ndv-search'), 'demo-password-ada');
+
+			expect(await findByText('No matching items')).toBeInTheDocument();
+			expect(getByTestId('run-data-item-count')).toHaveTextContent('0 of 2 items');
+		});
+
+		it('should not write masked values back to pin or run data', async () => {
+			const { findAllByText, queryByText } = render({
+				defaultRunItems: [{ json: { username: 'ada', password: 'demo-run-password' } }],
+				pinnedData: [{ json: { username: 'ada', password: 'demo-pinned-password' } }],
+				displayMode: 'table',
+				paneType: 'input',
+				displayMaskedFieldNames,
+			});
+
+			expect(await findAllByText('***')).not.toHaveLength(0);
+			expect(queryByText('demo-pinned-password')).not.toBeInTheDocument();
+
+			expect(workflowDocumentStore.getNodePinData('Test Node')?.[0].json.password).toBe(
+				'demo-pinned-password',
+			);
+			expect(
+				workflowsStore.getWorkflowRunData?.['Test Node'][0].data?.main[0]?.[0].json.password,
+			).toBe('demo-run-password');
+		});
+	});
+
 	// Default values for the render function
 	const nodes = [
 		{
@@ -1391,6 +1432,7 @@ describe('RunData', () => {
 		lastSuccessfulExecution,
 		redactionInfo,
 		executionStatus,
+		displayMaskedFieldNames,
 	}: {
 		defaultRunItems?: INodeExecutionData[];
 		workflowId?: string;
@@ -1403,6 +1445,7 @@ describe('RunData', () => {
 		overrideOutputs?: number[];
 		redactionInfo?: { isRedacted: boolean; reason: string; canReveal: boolean };
 		executionStatus?: ExecutionStatus;
+		displayMaskedFieldNames?: ReadonlySet<string>;
 		lastSuccessfulExecution?: {
 			id: string;
 			finished: boolean;
@@ -1548,6 +1591,7 @@ describe('RunData', () => {
 				executingMessage: '',
 				noDataInBranchMessage: '',
 				overrideOutputs,
+				displayMaskedFieldNames,
 			},
 			slots: {
 				'data-redacted': '<div data-test-id="data-redacted-slot">Data is redacted</div>',

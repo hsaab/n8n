@@ -122,4 +122,24 @@ describe('RunDataJson.vue', () => {
 		expect(markers).toHaveLength(1);
 		expect(markers[0].closest('.vjs-tree-node')).toHaveTextContent('"password"');
 	});
+
+	it('should mark values masked for display', async () => {
+		renderComponent({
+			props: {
+				displayMaskedFieldNames: new Set(['password', 'token']),
+				inputData: [
+					{ json: { username: 'ada', password: '***', apiKey: '***', creds: { token: '***' } } },
+				],
+			},
+			global: {
+				plugins: [createTestingPinia()],
+			},
+		});
+		await flushPromises();
+
+		const markers = screen.getAllByTestId('ndv-masked-value');
+		expect(markers).toHaveLength(2);
+		expect(markers[0].closest('.vjs-tree-node')).toHaveTextContent('"password"');
+		expect(markers[1].closest('.vjs-tree-node')).toHaveTextContent('"token"');
+	});
 });

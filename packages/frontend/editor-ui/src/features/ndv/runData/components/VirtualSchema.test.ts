@@ -444,6 +444,40 @@ describe('VirtualSchema.vue', () => {
 		expect(items[0]).toContainElement(markers[0]);
 	});
 
+	it('should mask sensitive fields in the input pane schema', async () => {
+		pinData(mockNode1, [
+			{
+				json: {
+					username: 'ada',
+					password: 'demo-password-123',
+					creds: { token: 'demo-token-456' },
+				},
+			},
+		]);
+
+		const { getAllByTestId, queryByText } = renderComponent({
+			props: {
+				nodes: [{ name: mockNode1.name, indicies: [], depth: 1 }],
+				displayMaskedFieldNames: new Set(['password', 'token']),
+			},
+		});
+
+		let items: HTMLElement[] = [];
+		await waitFor(() => {
+			items = getAllByTestId('run-data-schema-item');
+			expect(items).toHaveLength(4);
+		});
+
+		expect(items[0]).toHaveTextContent('usernameada');
+		expect(within(items[0]).queryByTestId('ndv-masked-value')).not.toBeInTheDocument();
+		expect(items[1]).toHaveTextContent('password***');
+		expect(within(items[1]).getByTestId('ndv-masked-value')).toBeInTheDocument();
+		expect(items[3]).toHaveTextContent('token***');
+		expect(within(items[3]).getByTestId('ndv-masked-value')).toBeInTheDocument();
+		expect(queryByText('demo-password-123')).not.toBeInTheDocument();
+		expect(queryByText('demo-token-456')).not.toBeInTheDocument();
+	});
+
 	it('renders schema with spaces and dots', async () => {
 		pinData(mockNode1, [
 			{
