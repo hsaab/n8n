@@ -1841,6 +1841,7 @@
 	"ndv.redacted.error.title": "This node encountered an error",
 	"ndv.redacted.error.description": "Error details have been redacted because the execution data contains sensitive information.",
 	"ndv.output": "Output",
+	"ndv.output.masked": "Masked",
 	"ndv.output.ai.empty": "👈 Use these logs to see information on how the {node} node completed processing. You can click on a node to see the input it received and data it output.",
 	"ndv.output.ai.waiting": "Waiting for message",
 	"ndv.output.outType.logs": "Logs",

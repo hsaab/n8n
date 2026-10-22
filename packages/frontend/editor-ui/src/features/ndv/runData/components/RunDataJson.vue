@@ -17,6 +17,8 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useElementSize } from '@vueuse/core';
 import { useTelemetryContext } from '@/app/composables/useTelemetryContext';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { useI18n } from '@n8n/i18n';
+import { N8nIcon } from '@n8n/design-system';
 
 const LazyRunDataJsonActions = defineAsyncComponent(
 	async () => await import('@/features/ndv/runData/components/RunDataJsonActions.vue'),
@@ -45,6 +47,7 @@ const props = withDefaults(
 
 const ndvStore = injectNDVStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
+const i18n = useI18n();
 
 const externalHooks = useExternalHooks();
 const telemetry = useTelemetry();
@@ -194,7 +197,12 @@ const getListItemName = (path: string) => {
 					/>
 				</template>
 				<template #renderNodeValue="{ node }">
+					<span v-if="node.content === '***'" data-test-id="ndv-masked-value">
+						<N8nIcon icon="lock" />
+						{{ i18n.baseText('ndv.output.masked') }}
+					</span>
 					<TextWithHighlights
+						v-else
 						:content="formatValue(node.content)"
 						:search="search"
 						data-target="mappable"

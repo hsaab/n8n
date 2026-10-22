@@ -722,8 +722,12 @@ watch(
 						@mouseenter="onMouseEnterCell"
 						@mouseleave="onMouseLeaveCell"
 					>
+						<span v-if="data === '***'" data-test-id="ndv-masked-value">
+							<N8nIcon icon="lock" />
+							{{ i18n.baseText('ndv.output.masked') }}
+						</span>
 						<TextWithHighlights
-							v-if="isSimple(data)"
+							v-else-if="isSimple(data)"
 							:content="getValueToRender(data)"
 							:search="search"
 							:class="{ [$style.value]: true, [$style.empty]: isEmpty(data) }"
@@ -753,7 +757,12 @@ watch(
 							</template>
 
 							<template #value="{ value }">
+								<span v-if="value === '***'" data-test-id="ndv-masked-value">
+									<N8nIcon icon="lock" />
+									{{ i18n.baseText('ndv.output.masked') }}
+								</span>
 								<TextWithHighlights
+									v-else
 									:content="getValueToRender(value)"
 									:search="search"
 									:class="{ [$style.nestedValue]: true, [$style.empty]: isEmpty(value) }"

@@ -110,7 +110,12 @@ const emit = defineEmits<{
 			<N8nIcon class="locked-icon" icon="lock" size="small" />
 		</N8nTooltip>
 
+		<span v-if="value === '***'" data-test-id="ndv-masked-value" class="text">
+			<N8nIcon icon="lock" />
+			{{ i18n.baseText('ndv.output.masked') }}
+		</span>
 		<TextWithHighlights
+			v-else
 			data-test-id="run-data-schema-item-value"
 			class="text"
 			:content="value"
