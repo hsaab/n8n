@@ -138,11 +138,13 @@ describe('test Set2, mask sensitive fields', () => {
 			const input = {
 				user: { name: 'Ada', password: 'p1', profile: { Token: 't1', city: 'London' } },
 				sessions: [{ id: 1, token: 's1' }, { id: 2 }, 'legacy', 7],
+				matrix: [[{ token: 'm1', id: 1 }], ['plain']],
 			};
 
 			expect(maskFields(input, defaultFields)).toEqual({
 				user: { name: 'Ada', password: MASKED, profile: { Token: MASKED, city: 'London' } },
 				sessions: [{ id: 1, token: MASKED }, { id: 2 }, 'legacy', 7],
+				matrix: [[{ token: MASKED, id: 1 }], ['plain']],
 			});
 		});
 
