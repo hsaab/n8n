@@ -106,5 +106,30 @@ test.describe(
 			await expect(firstMarker).toBeVisible();
 			await expect(firstMarker).toContainText('Masked');
 		});
+
+		test('should not draw the Masked label over its lock icon in nested values', async ({
+			n8n,
+		}) => {
+			await n8n.canvas.addNode('Manual Trigger');
+			await n8n.canvas.addNode('Edit Fields (Set)');
+
+			await n8n.ndv.editFields.setFieldsValues([
+				{ name: 'password', type: 'string', value: 'secret-value' },
+				{ name: 'creds.token', type: 'string', value: 'nested-token-value' },
+			]);
+			await n8n.ndv.addParameterOptionByName('Mask Sensitive Fields');
+			await n8n.ndv.setParameterSwitch('maskSensitiveFields', true);
+			await n8n.ndv.execute();
+
+			const markers = n8n.ndv.outputPanel.getMaskedValueMarkers();
+			await expect(markers).toHaveCount(2);
+
+			for (const marker of await markers.all()) {
+				const { iconRight, labelTextLeft } =
+					await n8n.ndv.outputPanel.getMaskedValueMarkerEdges(marker);
+				expect(iconRight).not.toBeNull();
+				expect(labelTextLeft).toBeGreaterThanOrEqual(iconRight!);
+			}
+		});
 	},
 );

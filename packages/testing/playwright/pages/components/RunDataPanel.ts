@@ -47,6 +47,21 @@ export class RunDataPanel {
 		return this.root.getByTestId('ndv-masked-value');
 	}
 
+	/**
+	 * Right edge of a masked marker's lock icon and left edge of its rendered label text.
+	 * The text is measured with a Range because an inherited text-indent shifts the text
+	 * without moving the label element's own box.
+	 */
+	async getMaskedValueMarkerEdges(marker: Locator) {
+		const iconBox = await marker.locator('[data-icon="lock"]').boundingBox();
+		const labelTextLeft = await marker.getByText('Masked').evaluate((label) => {
+			const range = document.createRange();
+			range.selectNodeContents(label);
+			return range.getBoundingClientRect().left;
+		});
+		return { iconRight: iconBox ? iconBox.x + iconBox.width : null, labelTextLeft };
+	}
+
 	getPinDataButton() {
 		return this.root.getByTestId('ndv-pin-data');
 	}
