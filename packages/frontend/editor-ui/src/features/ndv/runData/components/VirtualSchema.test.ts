@@ -25,7 +25,7 @@ import {
 import { createTestingPinia } from '@pinia/testing';
 import { fireEvent } from '@testing-library/dom';
 import { userEvent } from '@testing-library/user-event';
-import { cleanup, waitFor } from '@testing-library/vue';
+import { cleanup, waitFor, within } from '@testing-library/vue';
 import { computed, shallowRef } from 'vue';
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import {
@@ -108,6 +108,14 @@ const mergeNode = createTestNode({
 	name: 'Merge',
 	type: 'n8n-nodes-base.merge',
 	typeVersion: 3,
+	disabled: false,
+});
+
+const maskedSetNode = createTestNode({
+	name: 'Edit Fields',
+	type: SET_NODE_TYPE,
+	typeVersion: 3.5,
+	parameters: { options: { maskSensitiveFields: true } },
 	disabled: false,
 });
 
@@ -390,6 +398,25 @@ describe('VirtualSchema.vue', () => {
 		});
 
 		expect(container).toMatchSnapshot();
+	});
+
+	it('shows a masked marker on a masked field in the output schema', async () => {
+		const { getAllByTestId } = renderComponent({
+			props: {
+				nodes: [],
+				paneType: 'output',
+				node: maskedSetNode,
+				data: [{ password: '***' }],
+			},
+		});
+
+		let items: HTMLElement[] = [];
+		await waitFor(() => {
+			items = getAllByTestId('run-data-schema-item');
+			expect(items[0]).toHaveTextContent('password***');
+		});
+
+		expect(within(items[0]).getByTestId('ndv-masked-value')).toBeInTheDocument();
 	});
 
 	it('renders schema with spaces and dots', async () => {

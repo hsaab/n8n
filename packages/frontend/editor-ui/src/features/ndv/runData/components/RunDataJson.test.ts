@@ -3,6 +3,8 @@ import { screen, cleanup } from '@testing-library/vue';
 import { flushPromises } from '@vue/test-utils';
 import RunDataJson from '@/features/ndv/runData/components/RunDataJson.vue';
 import { createComponentRenderer } from '@/__tests__/render';
+import { SET_NODE_TYPE } from '@/app/constants';
+import type { INodeUi } from '@/Interface';
 import { useElementSize } from '@vueuse/core'; // Import the composable to mock
 
 vi.mock('@vueuse/core', async () => {
@@ -71,5 +73,33 @@ describe('RunDataJson.vue', () => {
 		expect(screen.getByText('"abc"')).toBeInTheDocument();
 		expect(screen.getByText('null')).toBeInTheDocument();
 		expect(screen.queryByText('undefined')).not.toBeInTheDocument();
+	});
+
+	it('shows a "Masked" marker on the same line as a masked value', async () => {
+		const maskedSetNode: INodeUi = {
+			parameters: { options: { maskSensitiveFields: true } },
+			id: '5d2b7e1a-0c4f-4b8e-9a61-2f3c8d9e7b10',
+			name: 'Edit Fields',
+			type: SET_NODE_TYPE,
+			typeVersion: 3.5,
+			position: [380, 1060],
+			disabled: false,
+		};
+
+		renderComponent({
+			props: {
+				node: maskedSetNode,
+				inputData: [{ json: { password: '***' } }],
+			},
+			global: {
+				plugins: [createTestingPinia()],
+			},
+		});
+		await flushPromises();
+
+		const maskedLine = screen.getByText('"***"').closest<HTMLElement>('.vjs-tree-node');
+		const marker = screen.getByTestId('ndv-masked-value');
+		expect(maskedLine).toContainElement(marker);
+		expect(marker).toHaveTextContent('Masked');
 	});
 });
