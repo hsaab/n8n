@@ -37,3 +37,13 @@ export function isMaskedValue(
 ): boolean {
 	return value === MASKED_VALUE && typeof key === 'string' && !!names?.has(key.toLowerCase());
 }
+
+export function isMaskedFieldName(
+	names: ReadonlySet<string> | undefined,
+	fieldName: unknown,
+): boolean {
+	if (!names || typeof fieldName !== 'string' || fieldName === '') return false;
+
+	const name = fieldName.toLowerCase();
+	return names.has(name) || name.split('.').some((segment) => names.has(segment));
+}
