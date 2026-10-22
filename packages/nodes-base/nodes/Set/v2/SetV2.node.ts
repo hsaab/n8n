@@ -10,6 +10,7 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 
 import type { IncludeMods, SetField, SetNodeOptions } from './helpers/interfaces';
 import { INCLUDE } from './helpers/interfaces';
+import { DEFAULT_FIELDS_TO_MASK, maskFields, parseFieldsToMask } from './helpers/mask';
 import * as manual from './manual.mode';
 import * as raw from './raw.mode';
 
@@ -20,7 +21,7 @@ const versionDescription: INodeTypeDescription = {
 	name: 'set',
 	iconColor: 'blue',
 	group: ['input'],
-	version: [3, 3.1, 3.2, 3.3, 3.4],
+	version: [3, 3.1, 3.2, 3.3, 3.4, 3.5],
 	description: 'Modify, add, or remove item fields',
 	subtitle: '={{$parameter["mode"]}}',
 	defaults: {
@@ -291,6 +292,33 @@ const versionDescription: INodeTypeDescription = {
 					description:
 						'By default, dot-notation is used in property names. This means that "a.b" will set the property "b" underneath "a" so { "a": { "b": value} }. If that is not intended this can be deactivated, it will then set { "a.b": value } instead.',
 				},
+				{
+					displayName: 'Mask Sensitive Fields',
+					name: 'maskSensitiveFields',
+					type: 'boolean',
+					default: false,
+					description: 'Whether to replace the values of the listed fields with *** in the output',
+					displayOptions: {
+						show: {
+							'@version': [{ _cnd: { gte: 3.5 } }],
+						},
+					},
+				},
+				{
+					displayName: 'Fields to Mask',
+					name: 'fieldsToMask',
+					type: 'string',
+					default: DEFAULT_FIELDS_TO_MASK,
+					placeholder: 'e.g. password, token',
+					description:
+						'Comma-separated list of field names to mask. Matches keys at any depth, ignoring case.',
+					displayOptions: {
+						show: {
+							'@version': [{ _cnd: { gte: 3.5 } }],
+							maskSensitiveFields: [true],
+						},
+					},
+				},
 			],
 		},
 	],
@@ -349,7 +377,7 @@ export class SetV2 implements INodeType {
 				options.include = include;
 			}
 
-			const newItem = await setNode[mode].execute.call(
+			let newItem = await setNode[mode].execute.call(
 				this,
 				items[i],
 				i,
@@ -357,6 +385,12 @@ export class SetV2 implements INodeType {
 				rawData,
 				node,
 			);
+
+			if (node.typeVersion >= 3.5 && options.maskSensitiveFields === true) {
+				const fieldsToMask =
+					typeof options.fieldsToMask === 'string' ? options.fieldsToMask : undefined;
+				newItem = { ...newItem, json: maskFields(newItem.json, parseFieldsToMask(fieldsToMask)) };
+			}
 
 			if (duplicateItem && this.getMode() === 'manual') {
 				const duplicateCount = this.getNodeParameter('duplicateCount', 0, 0) as number;
