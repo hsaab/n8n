@@ -190,8 +190,18 @@ describe('Edit Fields (Set) v2, mask sensitive fields', () => {
 			const output = await runSet(items, manualParameters({ maskSensitiveFields: true }), 3.5);
 
 			expect(output).toHaveLength(2);
-			expect(output[0].json).toEqual({ password: '***', note: 'one', extra: 'added', token: '***' });
-			expect(output[1].json).toEqual({ password: '***', note: 'two', extra: 'added', token: '***' });
+			expect(output[0].json).toEqual({
+				password: '***',
+				note: 'one',
+				extra: 'added',
+				token: '***',
+			});
+			expect(output[1].json).toEqual({
+				password: '***',
+				note: 'two',
+				extra: 'added',
+				token: '***',
+			});
 		});
 	});
 
@@ -238,6 +248,32 @@ describe('Edit Fields (Set) v2, mask sensitive fields', () => {
 				extra: 'added',
 				token: 'fresh',
 			});
+		});
+	});
+
+	describe('item JSON points back at itself', () => {
+		it('manual mode masks password and token and keeps the loop', async () => {
+			const json: IDataObject = {
+				name: 'ada',
+				password: 'hunter2',
+				profile: { token: 'secret-token', note: 'ok' },
+			};
+			json.self = json;
+
+			const input = createInputItem(json);
+			const output = await runSet([input], manualParameters({ maskSensitiveFields: true }), 3.5);
+
+			expect(output).toHaveLength(1);
+			const masked = output[0].json;
+			expect(masked.name).toBe('ada');
+			expect(masked.password).toBe('***');
+			expect(masked.extra).toBe('added');
+			expect(masked.token).toBe('***');
+			expect(masked.profile).toEqual({ token: '***', note: 'ok' });
+			expect(masked.self).toBe(masked);
+			expect(input.json).toBe(json);
+			expect(input.json.password).toBe('hunter2');
+			expect(input.json.self).toBe(json);
 		});
 	});
 
