@@ -2,7 +2,7 @@ import { createTestNode } from '@/__tests__/mocks';
 import { SET_NODE_TYPE } from '@/app/constants';
 import type { INodeUi } from '@/Interface';
 import type { NodeParameterValueType } from 'n8n-workflow';
-import { getMaskedFieldNames, isMaskedValue } from './maskedValue';
+import { getMaskedFieldNames, isMaskedFieldName, isMaskedValue } from './maskedValue';
 
 const maskedSetNode = createTestNode({
 	name: 'Edit Fields',
@@ -100,5 +100,34 @@ describe('isMaskedValue', () => {
 
 	it('does not treat "***" as masked when the node masks nothing', () => {
 		expect(isMaskedValue(undefined, 'password', '***')).toBe(false);
+	});
+});
+
+describe('isMaskedFieldName', () => {
+	const names: ReadonlySet<string> = new Set(['password', 'token']);
+
+	it('hides a Fields to Set row named exactly like a masked field', () => {
+		expect(isMaskedFieldName(names, 'password')).toBe(true);
+	});
+
+	it.each(['Password', 'TOKEN'])('ignores case in the row name "%s"', (name) => {
+		expect(isMaskedFieldName(names, name)).toBe(true);
+	});
+
+	it('hides a dotted row name when one of its segments is masked', () => {
+		expect(isMaskedFieldName(names, 'creds.token')).toBe(true);
+	});
+
+	it.each<{ description: string; name: string }>([
+		{ description: 'a name that is not listed', name: 'username' },
+		{ description: 'a name that only contains a listed name', name: 'passwordHint' },
+		{ description: 'a dotted name with no listed segment', name: 'creds.tokenId' },
+		{ description: 'a row that has no name yet', name: '' },
+	])('does not hide $description', ({ name }) => {
+		expect(isMaskedFieldName(names, name)).toBe(false);
+	});
+
+	it('does not hide anything when the node masks nothing', () => {
+		expect(isMaskedFieldName(undefined, 'password')).toBe(false);
 	});
 });

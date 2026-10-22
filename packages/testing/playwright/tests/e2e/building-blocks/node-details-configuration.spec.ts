@@ -189,5 +189,32 @@ test.describe(
 			await expect(table).toContainText('plain-token-value');
 			await expect(markers).toHaveCount(0);
 		});
+
+		test('should hide Fields to Set values for masked field names', async ({ n8n }) => {
+			await n8n.canvas.addNode('Manual Trigger');
+			await n8n.canvas.addNode('Edit Fields (Set)');
+
+			await n8n.ndv.editFields.setFieldsValues([
+				{ name: 'password', type: 'string', value: 'demo-password-123' },
+				{ name: 'name', type: 'string', value: 'Alice' },
+			]);
+			await n8n.ndv.addParameterOptionByName('Mask Sensitive Fields');
+			await n8n.ndv.setParameterSwitch('maskSensitiveFields', true);
+
+			const passwordValue = n8n.ndv.editFields.getFieldValueInput(0);
+			const nameValue = n8n.ndv.editFields.getFieldValueInput(1);
+			await expect(passwordValue).toHaveAttribute('type', 'password');
+			await expect(nameValue).toHaveAttribute('type', 'text');
+			await expect(nameValue).toHaveValue('Alice');
+
+			await n8n.ndv.setParameterSwitch('maskSensitiveFields', false);
+
+			await expect(passwordValue).toHaveAttribute('type', 'text');
+			await expect(passwordValue).toHaveValue('demo-password-123');
+
+			await n8n.ndv.execute();
+
+			await expect(n8n.ndv.outputPanel.getTable()).toContainText('demo-password-123');
+		});
 	},
 );

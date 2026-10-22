@@ -1,7 +1,9 @@
 import { defaultSettings } from '@/__tests__/defaults';
+import { createTestNode } from '@/__tests__/mocks';
 import { createComponentRenderer, type RenderOptions } from '@/__tests__/render';
 import { getTooltip, hoverTooltipTrigger } from '@/__tests__/utils';
 import * as workflowHelpers from '@/app/composables/useWorkflowHelpers';
+import { SET_NODE_TYPE } from '@/app/constants';
 import { STORES } from '@n8n/stores';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
@@ -158,5 +160,100 @@ describe('Assignment.vue', () => {
 		});
 
 		spy.mockRestore();
+	});
+
+	describe('Edit Fields with Mask Sensitive Fields', () => {
+		const maskingEditFieldsNode = createTestNode({
+			name: 'Edit Fields',
+			type: SET_NODE_TYPE,
+			typeVersion: 3.5,
+			parameters: { options: { maskSensitiveFields: true } },
+		});
+
+		const getValueContainer = () => screen.getByTestId('assignment-value');
+		const getValueInput = () => getValueContainer().querySelector('input');
+
+		it('should hide the value when a dot segment of the name is masked', async () => {
+			renderComponent({
+				props: {
+					node: maskingEditFieldsNode,
+					modelValue: { id: '1', name: 'creds.token', type: 'string', value: 'demo-token-123' },
+				},
+			});
+
+			expect(getValueInput()).toHaveAttribute('type', 'password');
+			await waitFor(() => expect(getValueInput()).toHaveValue('demo-token-123'));
+		});
+
+		it('should match the field name case-insensitively', () => {
+			renderComponent({
+				props: {
+					node: maskingEditFieldsNode,
+					modelValue: { id: '1', name: 'Password', type: 'string', value: 'demo-password-123' },
+				},
+			});
+
+			expect(getValueInput()).toHaveAttribute('type', 'password');
+		});
+
+		it('should hide the value once a masked name is typed', async () => {
+			renderComponent({
+				props: {
+					node: maskingEditFieldsNode,
+					modelValue: { id: '1', name: '', type: 'string', value: '' },
+				},
+			});
+
+			expect(getValueInput()).toHaveAttribute('type', 'text');
+
+			const nameField = screen.getByTestId('assignment-name').querySelector('input');
+			await userEvent.type(nameField as HTMLInputElement, 'password');
+
+			await waitFor(() => expect(getValueInput()).toHaveAttribute('type', 'password'));
+		});
+
+		it('should keep expression values in the expression input', async () => {
+			renderComponent({
+				props: {
+					node: maskingEditFieldsNode,
+					modelValue: {
+						id: '1',
+						name: 'password',
+						type: 'string',
+						value: '={{ $json.password }}',
+					},
+				},
+			});
+
+			await waitFor(() =>
+				expect(
+					within(getValueContainer()).getByTestId('inline-expression-editor-input'),
+				).toHaveTextContent('{{ $json.password }}'),
+			);
+			expect(getValueContainer().querySelector('input[type="password"]')).toBeNull();
+		});
+
+		it('should keep number values visible', async () => {
+			renderComponent({
+				props: {
+					node: maskingEditFieldsNode,
+					modelValue: { id: '1', name: 'token', type: 'number', value: 42 },
+				},
+			});
+
+			await waitFor(() => expect(getValueInput()).toHaveValue(42));
+			expect(getValueInput()).toHaveAttribute('type', 'number');
+		});
+
+		it('should show the value without a node', async () => {
+			renderComponent({
+				props: {
+					modelValue: { id: '1', name: 'password', type: 'string', value: 'demo-password-123' },
+				},
+			});
+
+			await waitFor(() => expect(getValueInput()).toHaveValue('demo-password-123'));
+			expect(getValueInput()).toHaveAttribute('type', 'text');
+		});
 	});
 });
