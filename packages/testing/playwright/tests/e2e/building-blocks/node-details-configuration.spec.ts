@@ -104,7 +104,7 @@ test.describe(
 			await expect(n8n.ndv.outputPanel.getTable()).toContainText('***');
 			const firstMarker = n8n.ndv.outputPanel.getMaskedValueMarkers().first();
 			await expect(firstMarker).toBeVisible();
-			await expect(firstMarker).toContainText('Masked');
+			await expect(firstMarker).toContainText('Redaccted');
 		});
 	},
 );
