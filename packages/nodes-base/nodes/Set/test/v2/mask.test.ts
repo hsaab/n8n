@@ -27,7 +27,7 @@ const createNode = (typeVersion: number, parameters: IDataObject): INode => ({
 	type: 'n8n-nodes-base.set',
 	typeVersion,
 	position: [42, 42],
-	parameters,
+	parameters: parameters as INode['parameters'],
 });
 
 const createMockExecuteFunction = (

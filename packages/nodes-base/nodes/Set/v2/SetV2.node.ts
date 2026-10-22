@@ -10,6 +10,7 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 
 import type { IncludeMods, SetField, SetNodeOptions } from './helpers/interfaces';
 import { INCLUDE } from './helpers/interfaces';
+import { maskJsonValues, parseMaskFields } from './helpers/mask';
 import * as manual from './manual.mode';
 import * as raw from './raw.mode';
 
@@ -20,7 +21,7 @@ const versionDescription: INodeTypeDescription = {
 	name: 'set',
 	iconColor: 'blue',
 	group: ['input'],
-	version: [3, 3.1, 3.2, 3.3, 3.4],
+	version: [3, 3.1, 3.2, 3.3, 3.4, 3.5],
 	description: 'Modify, add, or remove item fields',
 	subtitle: '={{$parameter["mode"]}}',
 	defaults: {
@@ -291,6 +292,43 @@ const versionDescription: INodeTypeDescription = {
 					description:
 						'By default, dot-notation is used in property names. This means that "a.b" will set the property "b" underneath "a" so { "a": { "b": value} }. If that is not intended this can be deactivated, it will then set { "a.b": value } instead.',
 				},
+				{
+					displayName: 'Mask Sensitive Fields',
+					name: 'maskSensitiveFields',
+					type: 'boolean',
+					default: false,
+					description: 'Whether to replace values of matching field names with a mask string',
+					displayOptions: {
+						show: {
+							'@version': [{ _cnd: { gte: 3.5 } }],
+						},
+					},
+				},
+				{
+					displayName: 'Fields to Mask',
+					name: 'maskFields',
+					type: 'string',
+					default: 'password, token',
+					description:
+						'Comma-separated list of field names to mask. Matching is case-insensitive and exact.',
+					displayOptions: {
+						show: {
+							'@version': [{ _cnd: { gte: 3.5 } }],
+						},
+					},
+				},
+				{
+					displayName: 'Mask Value',
+					name: 'maskValue',
+					type: 'string',
+					default: '***',
+					description: 'The string that replaces each matching field value',
+					displayOptions: {
+						show: {
+							'@version': [{ _cnd: { gte: 3.5 } }],
+						},
+					},
+				},
 			],
 		},
 	],
@@ -340,7 +378,7 @@ export class SetV2 implements INodeType {
 		for (let i = 0; i < items.length; i++) {
 			const includeOtherFields = this.getNodeParameter('includeOtherFields', i, false) as boolean;
 			const include = this.getNodeParameter('include', i, 'all') as IncludeMods;
-			const options = this.getNodeParameter('options', i, {});
+			const options = this.getNodeParameter('options', i, {}) as SetNodeOptions;
 			const node = this.getNode();
 
 			if (node.typeVersion >= 3.3) {
@@ -349,14 +387,15 @@ export class SetV2 implements INodeType {
 				options.include = include;
 			}
 
-			const newItem = await setNode[mode].execute.call(
-				this,
-				items[i],
-				i,
-				options as SetNodeOptions,
-				rawData,
-				node,
-			);
+			const newItem = await setNode[mode].execute.call(this, items[i], i, options, rawData, node);
+
+			if (options.maskSensitiveFields === true && node.typeVersion >= 3.5) {
+				newItem.json = maskJsonValues(
+					newItem.json,
+					parseMaskFields(options.maskFields ?? 'password, token'),
+					options.maskValue ?? '***',
+				);
+			}
 
 			if (duplicateItem && this.getMode() === 'manual') {
 				const duplicateCount = this.getNodeParameter('duplicateCount', 0, 0) as number;
