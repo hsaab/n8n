@@ -1,4 +1,4 @@
-import type { INode } from 'n8n-workflow';
+import type { IDataObject, INode } from 'n8n-workflow';
 import { SET_NODE_TYPE } from '@/app/constants';
 import { isObj } from '@/app/utils/typeGuards';
 
@@ -46,4 +46,34 @@ export function isMaskedFieldName(
 
 	const name = fieldName.toLowerCase();
 	return names.has(name) || name.split('.').some((segment) => names.has(segment));
+}
+
+function isPlainObject(value: unknown): value is IDataObject {
+	if (typeof value !== 'object' || value === null) return false;
+	const prototype: unknown = Object.getPrototypeOf(value);
+	return prototype === Object.prototype || prototype === null;
+}
+
+function maskNestedValue(
+	value: IDataObject[string],
+	names: ReadonlySet<string>,
+): IDataObject[string] {
+	if (Array.isArray(value)) {
+		return value.map((element: IDataObject[string]) => maskNestedValue(element, names));
+	}
+	return isPlainObject(value) ? maskFields(value, names) : value;
+}
+
+/**
+ * Must mask exactly like `maskFields` in the Edit Fields node
+ * (packages/nodes-base/nodes/Set/v2/helpers/mask.ts). Object.fromEntries keeps keys such as
+ * '__proto__' from parsed JSON as own data properties.
+ */
+export function maskFields(json: IDataObject, names: ReadonlySet<string>): IDataObject {
+	return Object.fromEntries(
+		Object.entries(json).map(([key, value]) => [
+			key,
+			names.has(key.toLowerCase()) ? MASKED_VALUE : maskNestedValue(value, names),
+		]),
+	);
 }

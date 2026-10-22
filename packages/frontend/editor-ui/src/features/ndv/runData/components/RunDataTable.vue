@@ -42,6 +42,7 @@ type Props = {
 	compact?: boolean;
 	disableHoverHighlight?: boolean;
 	collapsingColumnName: string | null;
+	displayMaskedFieldNames?: ReadonlySet<string>;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -54,6 +55,7 @@ const props = withDefaults(defineProps<Props>(), {
 	headerBgColor: 'base',
 	disableHoverHighlight: false,
 	compact: false,
+	displayMaskedFieldNames: undefined,
 });
 const emit = defineEmits<{
 	activeRowChanged: [row: number | null];
@@ -262,6 +264,13 @@ function isEmpty(value: unknown): boolean {
 		(typeof value === 'object' && value !== null && Object.keys(value).length === 0) ||
 		value === null ||
 		value === undefined
+	);
+}
+
+function isMasked(key: unknown, value: unknown): boolean {
+	return (
+		isMaskedValue(maskedFieldNames.value, key, value) ||
+		isMaskedValue(props.displayMaskedFieldNames, key, value)
 	);
 }
 
@@ -731,9 +740,7 @@ watch(
 								:search="search"
 								:class="{ [$style.value]: true, [$style.empty]: isEmpty(data) }"
 							/>
-							<MaskedValueMarker
-								v-if="isMaskedValue(maskedFieldNames, tableData.columns[index2], data)"
-							/>
+							<MaskedValueMarker v-if="isMasked(tableData.columns[index2], data)" />
 						</template>
 						<N8nTree v-else-if="isObject(data)" :node-class="$style.nodeClass" :value="data">
 							<template #label="{ label, path }">
@@ -765,7 +772,7 @@ watch(
 									:search="search"
 									:class="{ [$style.nestedValue]: true, [$style.empty]: isEmpty(value) }"
 								/>
-								<MaskedValueMarker v-if="isMaskedValue(maskedFieldNames, label, value)" />
+								<MaskedValueMarker v-if="isMasked(label, value)" />
 							</template>
 						</N8nTree>
 					</td>

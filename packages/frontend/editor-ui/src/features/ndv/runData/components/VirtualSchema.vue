@@ -42,7 +42,7 @@ import MappingPill from './MappingPill.vue';
 import { EnterpriseEditionFeature, PLACEHOLDER_FILLED_AT_EXECUTION_TIME } from '@/app/constants';
 import useEnvironmentsStore from '@/features/settings/environments.ee/environments.store';
 import { useSchemaPreviewStore } from '@/features/ndv/runData/schemaPreview.store';
-import { getMaskedFieldNames, isMaskedValue } from '@/features/ndv/runData/maskedValue';
+import { getMaskedFieldNames, isMaskedValue, maskFields } from '@/features/ndv/runData/maskedValue';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { isEmpty } from '@/app/utils/typesUtils';
 import { asyncComputed } from '@vueuse/core';
@@ -66,6 +66,7 @@ type Props = {
 	outputIndex?: number;
 	previewExecution?: IExecutionResponse | null;
 	truncateLimit?: number;
+	displayMaskedFieldNames?: ReadonlySet<string>;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -80,6 +81,7 @@ const props = withDefaults(defineProps<Props>(), {
 	outputIndex: undefined,
 	truncateLimit: 600,
 	previewExecution: undefined,
+	displayMaskedFieldNames: undefined,
 });
 
 const telemetry = useTelemetry();
@@ -120,6 +122,13 @@ const toggleNodeExclusiveAndScrollTop = (id: string) => {
 	}
 	toggleNode(id);
 	scroller.value?.scrollToItem(0);
+};
+
+const maskForDisplay = (data: IDataObject[]) => {
+	const names = props.displayMaskedFieldNames;
+	if (!names?.size) return data;
+
+	return data.map((json) => maskFields(json, names));
 };
 
 const getNodeSchema = async (fullNode: INodeUi, connectedNode: IConnectedNode) => {
@@ -176,7 +185,7 @@ const getNodeSchema = async (fullNode: INodeUi, connectedNode: IConnectedNode) =
 		})
 		.flat();
 	const hasBinary = nodeData.some((data) => !isEmpty(data.binary));
-	const data = pinData ?? executionDataToJson(nodeData);
+	const data = maskForDisplay(pinData ?? executionDataToJson(nodeData));
 	const isDataEmpty = data.length === 0 || (data.length === 1 && Object.keys(data[0]).length === 0);
 
 	let schema = getSchemaForExecutionData(data);
@@ -478,7 +487,10 @@ function isItemMasked(item: RenderItem): boolean {
 	const names = item.nodeName
 		? getMaskedFieldNames(workflowDocumentStore?.value?.getNodeByName(item.nodeName))
 		: ownMaskedFieldNames.value;
-	return isMaskedValue(names, item.title, item.value);
+	return (
+		isMaskedValue(names, item.title, item.value) ||
+		isMaskedValue(props.displayMaskedFieldNames, item.title, item.value)
+	);
 }
 
 const onDragStart = (el: HTMLElement, data?: string) => {

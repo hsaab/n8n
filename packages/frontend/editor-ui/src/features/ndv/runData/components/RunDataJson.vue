@@ -39,9 +39,11 @@ const props = withDefaults(
 		search: string | undefined;
 		compact?: boolean;
 		execution?: IRunExecutionData;
+		displayMaskedFieldNames?: ReadonlySet<string>;
 	}>(),
 	{
 		editMode: () => ({}),
+		displayMaskedFieldNames: undefined,
 	},
 );
 
@@ -133,6 +135,13 @@ const formatValue = (value: unknown) => {
 const getListItemName = (path: string) => {
 	return path.replace(/^(\["?\d"?]\.?)/g, '');
 };
+
+const isMasked = (key: unknown, value: unknown) => {
+	return (
+		isMaskedValue(maskedFieldNames.value, key, value) ||
+		isMaskedValue(props.displayMaskedFieldNames, key, value)
+	);
+};
 </script>
 
 <template>
@@ -211,7 +220,7 @@ const getListItemName = (path: string) => {
 						}"
 						class="ph-no-capture"
 					/>
-					<MaskedValueMarker v-if="isMaskedValue(maskedFieldNames, node.key, node.content)" />
+					<MaskedValueMarker v-if="isMasked(node.key, node.content)" />
 				</template>
 			</VueJsonPretty>
 		</Draggable>
