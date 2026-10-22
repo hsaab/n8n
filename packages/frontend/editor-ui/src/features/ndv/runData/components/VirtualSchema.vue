@@ -42,7 +42,7 @@ import MappingPill from './MappingPill.vue';
 import { EnterpriseEditionFeature, PLACEHOLDER_FILLED_AT_EXECUTION_TIME } from '@/app/constants';
 import useEnvironmentsStore from '@/features/settings/environments.ee/environments.store';
 import { useSchemaPreviewStore } from '@/features/ndv/runData/schemaPreview.store';
-import { isMaskedValue } from '@/features/ndv/runData/maskedValue';
+import { getMaskedFieldNames, isMaskedValue } from '@/features/ndv/runData/maskedValue';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { isEmpty } from '@/app/utils/typesUtils';
 import { asyncComputed } from '@vueuse/core';
@@ -472,11 +472,13 @@ const unwatchItems = watch(items, (newItems) => {
 	unwatchItems();
 });
 
+const ownMaskedFieldNames = computed(() => getMaskedFieldNames(props.node));
+
 function isItemMasked(item: RenderItem): boolean {
-	const producingNode = item.nodeName
-		? (workflowDocumentStore?.value?.getNodeByName(item.nodeName) ?? null)
-		: props.node;
-	return isMaskedValue(producingNode, item.value);
+	const names = item.nodeName
+		? getMaskedFieldNames(workflowDocumentStore?.value?.getNodeByName(item.nodeName))
+		: ownMaskedFieldNames.value;
+	return isMaskedValue(names, item.title, item.value);
 }
 
 const onDragStart = (el: HTMLElement, data?: string) => {

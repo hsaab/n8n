@@ -15,7 +15,7 @@ import MappingPill from './MappingPill.vue';
 import TextWithHighlights from './TextWithHighlights.vue';
 import BinaryEntryDataTable from './BinaryEntryDataTable.vue';
 import MaskedValueMarker from './MaskedValueMarker.vue';
-import { isMaskedValue } from '@/features/ndv/runData/maskedValue';
+import { getMaskedFieldNames, isMaskedValue } from '@/features/ndv/runData/maskedValue';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useExecutionHelpers } from '@/features/execution/executions/composables/useExecutionHelpers';
@@ -97,6 +97,7 @@ const canDraggableDrop = computed(() => ndvStore.canDraggableDrop);
 const draggableStickyPosition = computed(() => ndvStore.draggableStickyPos);
 const pairedItemMappings = computed(() => workflowsStore.workflowExecutionPairedItemMappings);
 const tableData = computed(() => convertToTable(props.inputData));
+const maskedFieldNames = computed(() => getMaskedFieldNames(props.node));
 const collapsingColumnIndex = computed(() => {
 	if (!props.collapsingColumnName) {
 		return -1;
@@ -730,7 +731,9 @@ watch(
 								:search="search"
 								:class="{ [$style.value]: true, [$style.empty]: isEmpty(data) }"
 							/>
-							<MaskedValueMarker v-if="isMaskedValue(props.node, data)" />
+							<MaskedValueMarker
+								v-if="isMaskedValue(maskedFieldNames, tableData.columns[index2], data)"
+							/>
 						</template>
 						<N8nTree v-else-if="isObject(data)" :node-class="$style.nodeClass" :value="data">
 							<template #label="{ label, path }">
@@ -756,13 +759,13 @@ watch(
 								<BinaryEntryDataTable :value="value" />
 							</template>
 
-							<template #value="{ value }">
+							<template #value="{ value, label }">
 								<TextWithHighlights
 									:content="getValueToRender(value)"
 									:search="search"
 									:class="{ [$style.nestedValue]: true, [$style.empty]: isEmpty(value) }"
 								/>
-								<MaskedValueMarker v-if="isMaskedValue(props.node, value)" />
+								<MaskedValueMarker v-if="isMaskedValue(maskedFieldNames, label, value)" />
 							</template>
 						</N8nTree>
 					</td>
