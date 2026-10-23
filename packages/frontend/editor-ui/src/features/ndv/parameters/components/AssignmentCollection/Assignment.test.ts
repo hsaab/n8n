@@ -255,5 +255,76 @@ describe('Assignment.vue', () => {
 			await waitFor(() => expect(getValueInput()).toHaveValue('demo-password-123'));
 			expect(getValueInput()).toHaveAttribute('type', 'text');
 		});
+
+		it.each([
+			{ name: 'apiKey', inputType: 'password' },
+			{ name: 'password', inputType: 'text' },
+		])(
+			'should follow a custom Fields to Mask list for a row named $name',
+			({ name, inputType }) => {
+				const customListNode = createTestNode({
+					name: 'Edit Fields',
+					type: SET_NODE_TYPE,
+					typeVersion: 3.5,
+					parameters: { options: { maskSensitiveFields: true, fieldsToMask: 'apiKey' } },
+				});
+
+				renderComponent({
+					props: {
+						node: customListNode,
+						modelValue: { id: '1', name, type: 'string', value: 'demo-value-123' },
+					},
+				});
+
+				expect(getValueInput()).toHaveAttribute('type', inputType);
+			},
+		);
+
+		it('should show the value again once the name stops matching', async () => {
+			renderComponent({
+				props: {
+					node: maskingEditFieldsNode,
+					modelValue: { id: '1', name: 'password', type: 'string', value: 'demo-password-123' },
+				},
+			});
+
+			expect(getValueInput()).toHaveAttribute('type', 'password');
+
+			const nameField = screen.getByTestId('assignment-name').querySelector('input');
+			await userEvent.clear(nameField as HTMLInputElement);
+			await userEvent.type(nameField as HTMLInputElement, 'username');
+
+			await waitFor(() => expect(getValueInput()).toHaveAttribute('type', 'text'));
+			expect(getValueInput()).toHaveValue('demo-password-123');
+		});
+
+		it('should keep the boolean control for a masked name', async () => {
+			renderComponent({
+				props: {
+					node: maskingEditFieldsNode,
+					modelValue: { id: '1', name: 'token', type: 'boolean', value: true },
+				},
+			});
+
+			await waitFor(() =>
+				expect(within(getValueContainer()).getByRole('combobox')).toHaveValue('true'),
+			);
+			expect(getValueContainer().querySelector('input[type="password"]')).toBeNull();
+		});
+
+		it.each([
+			{ type: 'object', value: '{"ssn":"demo-ssn-123"}' },
+			{ type: 'array', value: '["demo-role"]' },
+		])('should hide $type values under a masked name', async ({ type, value }) => {
+			renderComponent({
+				props: {
+					node: maskingEditFieldsNode,
+					modelValue: { id: '1', name: 'token', type, value },
+				},
+			});
+
+			expect(getValueInput()).toHaveAttribute('type', 'password');
+			await waitFor(() => expect(getValueInput()).toHaveValue(value));
+		});
 	});
 });
