@@ -277,5 +277,142 @@ test.describe(
 				});
 			}
 		});
+
+		test('should mark masked values in the output JSON and schema views', async ({ n8n }) => {
+			await n8n.canvas.addNode('Manual Trigger');
+			await n8n.canvas.addNode('Edit Fields (Set)');
+			await n8n.ndv.editFields.setFieldsValues([
+				{ name: 'username', type: 'string', value: 'demo-user' },
+				{ name: 'password', type: 'string', value: 'demo-password-123' },
+				{ name: 'token', type: 'string', value: 'demo-token-456' },
+			]);
+			await n8n.ndv.addParameterOptionByName('Mask Sensitive Fields');
+			await n8n.ndv.setParameterSwitch('maskSensitiveFields', true);
+			await n8n.ndv.execute();
+
+			const outputPanel = n8n.ndv.outputPanel;
+			const outputData = outputPanel.getDataContainer();
+			const markers = outputPanel.getMaskedValueMarkers();
+			const views = [
+				{ mode: 'json', content: outputPanel.getJsonDataContainer() },
+				{ mode: 'schema', content: outputPanel.getSchemaItem('username') },
+			] as const;
+			for (const { mode, content } of views) {
+				await test.step(`${mode} view`, async () => {
+					await outputPanel.switchDisplayMode(mode);
+
+					await expect(content).toBeVisible();
+					await expect(outputData).toContainText('demo-user');
+					await expect(outputData).toContainText('***');
+					await expect(outputData).not.toContainText('demo-password-123');
+					await expect(outputData).not.toContainText('demo-token-456');
+					await expect(markers).toHaveCount(2);
+					await expect(markers.first()).toContainText('Masked');
+				});
+			}
+		});
+
+		test('should apply a narrowed Fields to Mask list to the input panel and value boxes', async ({
+			n8n,
+		}) => {
+			await n8n.canvas.addNode('Manual Trigger');
+			await n8n.canvas.addNode('Edit Fields (Set)');
+			await n8n.ndv.editFields.setFieldsValues([
+				{ name: 'username', type: 'string', value: 'demo-user' },
+				{ name: 'password', type: 'string', value: 'demo-password-123' },
+				{ name: 'token', type: 'string', value: 'demo-token-456' },
+			]);
+			await n8n.ndv.close();
+
+			await n8n.canvas.addNode('Edit Fields (Set)', { fromNode: 'Edit Fields' });
+			await n8n.ndv.editFields.setFieldsValues([
+				{ name: 'password', type: 'string', value: 'own-password-value' },
+				{ name: 'token', type: 'string', value: 'own-token-value' },
+			]);
+			await n8n.ndv.addParameterOptionByName('Mask Sensitive Fields');
+			await n8n.ndv.setParameterSwitch('maskSensitiveFields', true);
+			await n8n.ndv.executePrevious();
+			await n8n.ndv.inputPanel.switchDisplayMode('table');
+
+			const inputTable = n8n.ndv.inputPanel.getTable();
+			const inputMarkers = n8n.ndv.inputPanel.getMaskedValueMarkers();
+			const passwordValue = n8n.ndv.editFields.getFieldValueInput(0);
+			const tokenValue = n8n.ndv.editFields.getFieldValueInput(1);
+			await expect(inputTable).toContainText('demo-user');
+			await expect(inputTable).not.toContainText('demo-password-123');
+			await expect(inputTable).not.toContainText('demo-token-456');
+			await expect(inputMarkers).toHaveCount(2);
+			await expect(passwordValue).toHaveAttribute('type', 'password');
+			await expect(tokenValue).toHaveAttribute('type', 'password');
+
+			await n8n.ndv.addParameterOptionByName('Fields to Mask');
+			await n8n.ndv.fillParameterInputByName('fieldsToMask', 'password');
+
+			await expect(inputTable).toContainText('demo-token-456');
+			await expect(inputTable).not.toContainText('demo-password-123');
+			await expect(inputMarkers).toHaveCount(1);
+			await expect(passwordValue).toHaveAttribute('type', 'password');
+			await expect(tokenValue).toHaveAttribute('type', 'text');
+			await expect(tokenValue).toHaveValue('own-token-value');
+		});
+
+		test('should mask nothing when Fields to Mask is cleared', async ({ n8n }) => {
+			await n8n.canvas.addNode('Manual Trigger');
+			await n8n.canvas.addNode('Edit Fields (Set)');
+			await n8n.ndv.editFields.setFieldsValues([
+				{ name: 'password', type: 'string', value: 'secret-value' },
+				{ name: 'token', type: 'string', value: 'plain-token-value' },
+			]);
+			await n8n.ndv.addParameterOptionByName('Mask Sensitive Fields');
+			await n8n.ndv.setParameterSwitch('maskSensitiveFields', true);
+
+			const passwordValue = n8n.ndv.editFields.getFieldValueInput(0);
+			const tokenValue = n8n.ndv.editFields.getFieldValueInput(1);
+			await expect(passwordValue).toHaveAttribute('type', 'password');
+
+			await n8n.ndv.addParameterOptionByName('Fields to Mask');
+			await n8n.ndv.fillParameterInputByName('fieldsToMask', '');
+
+			await expect(passwordValue).toHaveAttribute('type', 'text');
+			await expect(passwordValue).toHaveValue('secret-value');
+			await expect(tokenValue).toHaveAttribute('type', 'text');
+			await expect(tokenValue).toHaveValue('plain-token-value');
+
+			await n8n.ndv.execute();
+
+			const table = n8n.ndv.outputPanel.getTable();
+			await expect(table).toContainText('secret-value');
+			await expect(table).toContainText('plain-token-value');
+			await expect(table).not.toContainText('***');
+			await expect(n8n.ndv.outputPanel.getMaskedValueMarkers()).toHaveCount(0);
+		});
+
+		test('should keep an expression value readable in a masked field', async ({ n8n }) => {
+			await n8n.canvas.addNode('Manual Trigger');
+			await n8n.canvas.addNode('Edit Fields (Set)');
+			await n8n.ndv.getAssignmentCollectionAdd('assignments').click();
+			await n8n.ndv.clickAssignmentExpressionToggle('assignments');
+			await n8n.ndv.clearExpressionEditor();
+			// The editor closes `{{` with ` }}` on its own, so typing the closing braces would double them.
+			await n8n.ndv.typeInExpressionEditor("{{'demo-' + 'expression-value'");
+			await n8n.ndv.getAssignmentNameTextbox('assignments').fill('password');
+			await n8n.ndv.addParameterOptionByName('Mask Sensitive Fields');
+			await n8n.ndv.setParameterSwitch('maskSensitiveFields', true);
+
+			const expressionInput = n8n.ndv.getInlineExpressionEditorInput();
+			await expect(expressionInput).toBeVisible();
+			await expect(expressionInput).toHaveText("{{ 'demo-' + 'expression-value' }}");
+			await expect(n8n.ndv.editFields.getFieldValueInput(0)).not.toHaveAttribute(
+				'type',
+				'password',
+			);
+
+			await n8n.ndv.execute();
+
+			const table = n8n.ndv.outputPanel.getTable();
+			await expect(table).toContainText('***');
+			await expect(table).not.toContainText('demo-expression-value');
+			await expect(n8n.ndv.outputPanel.getMaskedValueMarkers()).toHaveCount(1);
+		});
 	},
 );
