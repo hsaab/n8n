@@ -92,6 +92,7 @@ describe('isMaskedValue', () => {
 	it.each<{ description: string; value: unknown }>([
 		{ description: 'a regular string', value: 'secret' },
 		{ description: 'a shorter run of asterisks', value: '**' },
+		{ description: 'a longer run of asterisks', value: '****' },
 		{ description: 'a number', value: 3 },
 		{ description: 'a missing value', value: undefined },
 	])('does not treat $description under a listed key as masked', ({ value }) => {

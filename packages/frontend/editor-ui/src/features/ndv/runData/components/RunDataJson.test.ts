@@ -1,5 +1,5 @@
 import { createTestingPinia } from '@pinia/testing';
-import { screen, cleanup } from '@testing-library/vue';
+import { screen, cleanup, within } from '@testing-library/vue';
 import { flushPromises } from '@vue/test-utils';
 import RunDataJson from '@/features/ndv/runData/components/RunDataJson.vue';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -101,6 +101,60 @@ describe('RunDataJson.vue', () => {
 		const marker = screen.getByTestId('ndv-masked-value');
 		expect(maskedLine).toContainElement(marker);
 		expect(marker).toHaveTextContent('Masked');
+	});
+
+	it('marks listed keys inside an array of objects in any letter case', async () => {
+		renderComponent({
+			props: {
+				node: maskedSetNode,
+				inputData: [
+					{
+						json: {
+							Password: '***',
+							sessions: [
+								{ id: 1, token: '***' },
+								{ id: 2, token: '****' },
+							],
+						},
+					},
+				],
+			},
+			global: {
+				plugins: [createTestingPinia()],
+			},
+		});
+		await flushPromises();
+
+		const markers = screen.getAllByTestId('ndv-masked-value');
+		expect(markers).toHaveLength(2);
+
+		const passwordLine = markers[0].closest('.vjs-tree-node');
+		const tokenLine = markers[1].closest('.vjs-tree-node');
+		expect(passwordLine).toHaveTextContent('"Password"');
+		expect(passwordLine).toHaveTextContent('"***"');
+		expect(tokenLine).toHaveTextContent('"token"');
+		expect(tokenLine).toHaveTextContent('"***"');
+
+		const userTokenLine = screen.getByText('"****"').closest<HTMLElement>('.vjs-tree-node');
+		expect(
+			within(userTokenLine as HTMLElement).queryByTestId('ndv-masked-value'),
+		).not.toBeInTheDocument();
+	});
+
+	it('does not mark *** values when Mask Sensitive Fields is off', async () => {
+		renderComponent({
+			props: {
+				node: { ...maskedSetNode, parameters: { options: { maskSensitiveFields: false } } },
+				inputData: [{ json: { password: '***' } }],
+			},
+			global: {
+				plugins: [createTestingPinia()],
+			},
+		});
+		await flushPromises();
+
+		expect(screen.getByText('"***"')).toBeInTheDocument();
+		expect(screen.queryByTestId('ndv-masked-value')).not.toBeInTheDocument();
 	});
 
 	it('shows the "Masked" marker only for fields still listed in Fields to Mask', async () => {

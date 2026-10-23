@@ -239,6 +239,38 @@ describe('RunDataTable.vue', () => {
 			expect(within(credsCell).getByTestId('ndv-masked-value')).toHaveTextContent('Masked');
 		});
 
+		it('marks listed keys inside an array of objects in any letter case', () => {
+			const { container, getAllByTestId } = renderComponent({
+				props: {
+					node: maskedSetNode,
+					inputData: [
+						{
+							json: {
+								Password: '***',
+								sessions: [
+									{ id: 1, token: '***' },
+									{ id: 2, token: '****' },
+								],
+							},
+						},
+					],
+				},
+			});
+
+			expect(getAllByTestId('ndv-masked-value')).toHaveLength(2);
+
+			const passwordCell = getFirstTableCellForColumn(container as HTMLElement, 'Password');
+			expect(within(passwordCell).getByTestId('ndv-masked-value')).toBeInTheDocument();
+
+			const sessionsCell = getFirstTableCellForColumn(container as HTMLElement, 'sessions');
+			const sessionsMarker = within(sessionsCell).getByTestId('ndv-masked-value');
+			const maskedTokenRow = within(sessionsCell).getByText('***').closest('div');
+			const userTokenRow = within(sessionsCell).getByText('****').closest('div');
+			expect(maskedTokenRow).toHaveTextContent('token');
+			expect(maskedTokenRow).toContainElement(sessionsMarker);
+			expect(userTokenRow).not.toContainElement(sessionsMarker);
+		});
+
 		it('shows the "Masked" marker only for fields still listed in Fields to Mask', () => {
 			const { container, getAllByTestId } = renderComponent({
 				props: {
