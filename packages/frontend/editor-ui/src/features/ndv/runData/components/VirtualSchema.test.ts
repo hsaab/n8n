@@ -25,7 +25,7 @@ import {
 import { createTestingPinia } from '@pinia/testing';
 import { fireEvent } from '@testing-library/dom';
 import { userEvent } from '@testing-library/user-event';
-import { cleanup, waitFor } from '@testing-library/vue';
+import { cleanup, waitFor, within } from '@testing-library/vue';
 import { computed, shallowRef } from 'vue';
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import {
@@ -108,6 +108,14 @@ const mergeNode = createTestNode({
 	name: 'Merge',
 	type: 'n8n-nodes-base.merge',
 	typeVersion: 3,
+	disabled: false,
+});
+
+const maskedSetNode = createTestNode({
+	name: 'Edit Fields',
+	type: SET_NODE_TYPE,
+	typeVersion: 3.5,
+	parameters: { options: { maskSensitiveFields: true } },
 	disabled: false,
 });
 
@@ -390,6 +398,173 @@ describe('VirtualSchema.vue', () => {
 		});
 
 		expect(container).toMatchSnapshot();
+	});
+
+	it('shows a masked marker on a masked field in the output schema', async () => {
+		const { getAllByTestId } = renderComponent({
+			props: {
+				nodes: [],
+				paneType: 'output',
+				node: maskedSetNode,
+				data: [{ password: '***' }],
+			},
+		});
+
+		let items: HTMLElement[] = [];
+		await waitFor(() => {
+			items = getAllByTestId('run-data-schema-item');
+			expect(items[0]).toHaveTextContent('password***');
+		});
+
+		expect(within(items[0]).getByTestId('ndv-masked-value')).toBeInTheDocument();
+	});
+
+	it('shows the masked marker only for fields still listed in Fields to Mask', async () => {
+		const { getAllByTestId } = renderComponent({
+			props: {
+				nodes: [],
+				paneType: 'output',
+				node: {
+					...maskedSetNode,
+					parameters: { options: { maskSensitiveFields: true, fieldsToMask: 'password' } },
+				},
+				data: [{ password: '***', token: '***', creds: { token: '***' } }],
+			},
+		});
+
+		let items: HTMLElement[] = [];
+		await waitFor(() => {
+			items = getAllByTestId('run-data-schema-item');
+			expect(items).toHaveLength(4);
+		});
+
+		const markers = getAllByTestId('ndv-masked-value');
+		expect(markers).toHaveLength(1);
+		expect(items[0]).toHaveTextContent('password***');
+		expect(items[0]).toContainElement(markers[0]);
+	});
+
+	it('should mask sensitive fields in the input pane schema', async () => {
+		pinData(mockNode1, [
+			{
+				json: {
+					username: 'ada',
+					password: 'demo-password-123',
+					creds: { token: 'demo-token-456' },
+				},
+			},
+		]);
+
+		const { getAllByTestId, queryByText } = renderComponent({
+			props: {
+				nodes: [{ name: mockNode1.name, indicies: [], depth: 1 }],
+				displayMaskedFieldNames: new Set(['password', 'token']),
+			},
+		});
+
+		let items: HTMLElement[] = [];
+		await waitFor(() => {
+			items = getAllByTestId('run-data-schema-item');
+			expect(items).toHaveLength(4);
+		});
+
+		expect(items[0]).toHaveTextContent('usernameada');
+		expect(within(items[0]).queryByTestId('ndv-masked-value')).not.toBeInTheDocument();
+		expect(items[1]).toHaveTextContent('password***');
+		expect(within(items[1]).getByTestId('ndv-masked-value')).toBeInTheDocument();
+		expect(items[3]).toHaveTextContent('token***');
+		expect(within(items[3]).getByTestId('ndv-masked-value')).toBeInTheDocument();
+		expect(queryByText('demo-password-123')).not.toBeInTheDocument();
+		expect(queryByText('demo-token-456')).not.toBeInTheDocument();
+	});
+
+	it('marks a listed key inside an array of objects in the output schema', async () => {
+		const { getAllByTestId } = renderComponent({
+			props: {
+				nodes: [],
+				paneType: 'output',
+				node: maskedSetNode,
+				data: [{ Password: '***', sessions: [{ token: '***' }] }],
+			},
+		});
+
+		let items: HTMLElement[] = [];
+		await waitFor(() => {
+			items = getAllByTestId('run-data-schema-item');
+			expect(items).toHaveLength(4);
+		});
+
+		expect(getAllByTestId('ndv-masked-value')).toHaveLength(2);
+		expect(items[0]).toHaveTextContent('Password***');
+		expect(within(items[0]).getByTestId('ndv-masked-value')).toBeInTheDocument();
+		expect(items[3]).toHaveTextContent('token***');
+		expect(within(items[3]).getByTestId('ndv-masked-value')).toBeInTheDocument();
+	});
+
+	it('does not mark *** in the output schema when Mask Sensitive Fields is off', async () => {
+		const { getAllByTestId, queryByTestId } = renderComponent({
+			props: {
+				nodes: [],
+				paneType: 'output',
+				node: { ...maskedSetNode, parameters: { options: { maskSensitiveFields: false } } },
+				data: [{ password: '***' }],
+			},
+		});
+
+		await waitFor(() => {
+			expect(getAllByTestId('run-data-schema-item')[0]).toHaveTextContent('password***');
+		});
+
+		expect(queryByTestId('ndv-masked-value')).not.toBeInTheDocument();
+	});
+
+	it('marks values an upstream Edit Fields node masked in the input pane', async () => {
+		useNodeTypesStore().setNodeTypes([
+			mockNodeTypeDescription({ name: SET_NODE_TYPE, version: [1, 3.5] }),
+		]);
+		const workflowsStore = useWorkflowsStore();
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)).addNode(
+			maskedSetNode,
+		);
+		pinData(maskedSetNode, [{ json: { username: 'ada', password: '***' } }]);
+
+		const { getAllByTestId } = renderComponent({
+			props: {
+				node: ifNode,
+				nodes: [{ name: maskedSetNode.name, indicies: [], depth: 1 }],
+			},
+		});
+
+		let items: HTMLElement[] = [];
+		await waitFor(() => {
+			items = getAllByTestId('run-data-schema-item');
+			expect(items).toHaveLength(2);
+		});
+
+		expect(getAllByTestId('ndv-masked-value')).toHaveLength(1);
+		expect(items[0]).toHaveTextContent('usernameada');
+		expect(items[1]).toHaveTextContent('password***');
+		expect(within(items[1]).getByTestId('ndv-masked-value')).toBeInTheDocument();
+	});
+
+	it('does not mark *** from an upstream node that does not mask', async () => {
+		pinData(mockNode1, [{ json: { username: 'ada', password: '***' } }]);
+
+		const { getAllByTestId, queryByTestId } = renderComponent({
+			props: {
+				node: ifNode,
+				nodes: [{ name: mockNode1.name, indicies: [], depth: 1 }],
+			},
+		});
+
+		let items: HTMLElement[] = [];
+		await waitFor(() => {
+			items = getAllByTestId('run-data-schema-item');
+			expect(items).toHaveLength(2);
+		});
+
+		expect(items[1]).toHaveTextContent('password***');
+		expect(queryByTestId('ndv-masked-value')).not.toBeInTheDocument();
 	});
 
 	it('renders schema with spaces and dots', async () => {

@@ -168,6 +168,7 @@ exports[`VirtualSchema.vue > renders preview schema when enabled and available 1
             <span />
           </span>
           <!--v-if-->
+          <!--v-if-->
         </div>
         
         
@@ -231,6 +232,7 @@ exports[`VirtualSchema.vue > renders preview schema when enabled and available 1
             </span>
             
           </span>
+          <!--v-if-->
           <!--v-if-->
         </div>
         
@@ -500,6 +502,7 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
             <span />
           </span>
           <!--v-if-->
+          <!--v-if-->
         </div>
         
         
@@ -568,6 +571,7 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
           >
             <span />
           </span>
+          <!--v-if-->
           <!--v-if-->
         </div>
         
@@ -638,6 +642,7 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
             <span />
           </span>
           <!--v-if-->
+          <!--v-if-->
         </div>
         
         
@@ -706,6 +711,7 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
           >
             <span />
           </span>
+          <!--v-if-->
           <!--v-if-->
         </div>
         
@@ -776,6 +782,7 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
             <span />
           </span>
           <!--v-if-->
+          <!--v-if-->
         </div>
         
         
@@ -844,6 +851,7 @@ exports[`VirtualSchema.vue > renders schema for empty objects and arrays 1`] = `
           >
             <span />
           </span>
+          <!--v-if-->
           <!--v-if-->
         </div>
         
@@ -977,6 +985,7 @@ exports[`VirtualSchema.vue > renders schema in output pane 1`] = `
             
           </span>
           <!--v-if-->
+          <!--v-if-->
         </div>
         
         
@@ -1038,6 +1047,7 @@ exports[`VirtualSchema.vue > renders schema in output pane 1`] = `
             </span>
             
           </span>
+          <!--v-if-->
           <!--v-if-->
         </div>
         
@@ -1106,6 +1116,7 @@ exports[`VirtualSchema.vue > renders schema in output pane 1`] = `
             <span />
           </span>
           <!--v-if-->
+          <!--v-if-->
         </div>
         
         
@@ -1168,6 +1179,7 @@ exports[`VirtualSchema.vue > renders schema in output pane 1`] = `
             
           </span>
           <!--v-if-->
+          <!--v-if-->
         </div>
         
         
@@ -1229,6 +1241,7 @@ exports[`VirtualSchema.vue > renders schema in output pane 1`] = `
             </span>
             
           </span>
+          <!--v-if-->
           <!--v-if-->
         </div>
         
@@ -1386,6 +1399,7 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
             <span />
           </span>
           <!--v-if-->
+          <!--v-if-->
         </div>
         
         
@@ -1454,6 +1468,7 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
           >
             <span />
           </span>
+          <!--v-if-->
           <!--v-if-->
         </div>
         
@@ -1524,6 +1539,7 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
             <span />
           </span>
           <!--v-if-->
+          <!--v-if-->
         </div>
         
         
@@ -1588,6 +1604,7 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
             
           </span>
           <!--v-if-->
+          <!--v-if-->
         </div>
         
         
@@ -1651,6 +1668,7 @@ exports[`VirtualSchema.vue > renders schema with spaces and dots 1`] = `
             </span>
             
           </span>
+          <!--v-if-->
           <!--v-if-->
         </div>
         
@@ -1923,6 +1941,7 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             
           </span>
           <!--v-if-->
+          <!--v-if-->
         </div>
         
         
@@ -1984,6 +2003,7 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             </span>
             
           </span>
+          <!--v-if-->
           <!--v-if-->
         </div>
         
@@ -2066,6 +2086,7 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             <span />
           </span>
           <!--v-if-->
+          <!--v-if-->
         </div>
         
         
@@ -2133,6 +2154,7 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             <span />
           </span>
           <!--v-if-->
+          <!--v-if-->
         </div>
         
         
@@ -2194,6 +2216,7 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             </span>
             
           </span>
+          <!--v-if-->
           <!--v-if-->
         </div>
         
@@ -2257,6 +2280,7 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             
           </span>
           <!--v-if-->
+          <!--v-if-->
         </div>
         
         
@@ -2318,6 +2342,7 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             </span>
             
           </span>
+          <!--v-if-->
           <!--v-if-->
         </div>
         
@@ -2386,6 +2411,7 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             <span />
           </span>
           <!--v-if-->
+          <!--v-if-->
         </div>
         
         
@@ -2447,6 +2473,7 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             </span>
             
           </span>
+          <!--v-if-->
           <!--v-if-->
         </div>
         
@@ -2510,6 +2537,7 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             
           </span>
           <!--v-if-->
+          <!--v-if-->
         </div>
         
         
@@ -2571,6 +2599,7 @@ exports[`VirtualSchema.vue > renders variables and context section 1`] = `
             </span>
             
           </span>
+          <!--v-if-->
           <!--v-if-->
         </div>
         
@@ -2725,6 +2754,7 @@ exports[`VirtualSchema.vue > should expand all nodes when searching 1`] = `
             
           </span>
           <!--v-if-->
+          <!--v-if-->
         </div>
         
         
@@ -2842,6 +2872,7 @@ exports[`VirtualSchema.vue > should expand all nodes when searching 1`] = `
             
             
           </span>
+          <!--v-if-->
           <!--v-if-->
         </div>
         

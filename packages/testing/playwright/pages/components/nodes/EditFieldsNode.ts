@@ -36,6 +36,15 @@ export class EditFieldsNode extends BasePage {
 		await this.setFieldsValues([{ name, type, value }], paramName);
 	}
 
+	getFieldValueInput(index: number, paramName = 'assignments'): Locator {
+		const valueContainer = this.page
+			.getByTestId(`assignment-collection-${paramName}`)
+			.getByTestId('assignment')
+			.nth(index)
+			.getByTestId('assignment-value');
+		return this.getTextInput(valueContainer);
+	}
+
 	private async ensureFieldExists(container: Locator, index: number): Promise<void> {
 		if (index > 0) {
 			await container.getByTestId('assignment-collection-drop-area').click();
@@ -84,10 +93,14 @@ export class EditFieldsNode extends BasePage {
 		}
 	}
 
-	private async setTextValue(valueContainer: Locator, value: string): Promise<void> {
-		const input = valueContainer
+	private getTextInput(valueContainer: Locator): Locator {
+		return valueContainer
 			.getByRole('textbox')
 			.or(valueContainer.locator('input, textarea, [contenteditable]').first());
+	}
+
+	private async setTextValue(valueContainer: Locator, value: string): Promise<void> {
+		const input = this.getTextInput(valueContainer);
 		await input.waitFor({ state: 'visible' });
 		await input.fill(value);
 	}

@@ -1,14 +1,21 @@
 import { createComponentRenderer, type RenderOptions } from '@/__tests__/render';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
-import { createTestingPinia } from '@pinia/testing';
+import { createTestingPinia, type TestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
-import { fireEvent, within } from '@testing-library/vue';
+import { fireEvent, waitFor, within } from '@testing-library/vue';
 import * as workflowHelpers from '@/app/composables/useWorkflowHelpers';
 import AssignmentCollection from './AssignmentCollection.vue';
 import { STORES } from '@n8n/stores';
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import { createTestNodeProperties } from '@/__tests__/mocks';
-import type { AssignmentCollectionValue, AssignmentValue } from 'n8n-workflow';
+import { SET_NODE_TYPE } from '@/app/constants';
+import {
+	EVALUATION_NODE_TYPE,
+	type AssignmentCollectionValue,
+	type AssignmentValue,
+	type INode,
+	type INodeParameters,
+} from 'n8n-workflow';
 
 vi.mock('vue-router');
 
@@ -280,6 +287,128 @@ describe('AssignmentCollection.vue', () => {
 			expect(getAssignmentType(assignments[0])).toEqual('Boolean');
 			expect(getAssignmentType(assignments[1])).toEqual('Boolean');
 			expect(getAssignmentType(assignments[2])).toEqual('Boolean');
+		});
+	});
+
+	describe('Edit Fields with Mask Sensitive Fields', () => {
+		const editFieldsNode = (options: INodeParameters): INode => ({
+			parameters: { options },
+			id: 'f63efb2d-3cc5-4500-89f9-b39aab19baf5',
+			name: 'Edit Fields',
+			type: SET_NODE_TYPE,
+			typeVersion: 3.5,
+			position: [1120, 380],
+			credentials: {},
+			disabled: false,
+		});
+
+		const passwordAndNameFields = (): AssignmentCollectionValue => ({
+			assignments: [
+				{ id: 'id-password', name: 'password', value: 'demo-password-123', type: 'string' },
+				{ id: 'id-name', name: 'name', value: 'Alice', type: 'string' },
+			],
+		});
+
+		const getValueInput = (assignment: HTMLElement): HTMLInputElement =>
+			getInput(within(assignment).getByTestId('assignment-value'));
+
+		let pinia: TestingPinia;
+
+		beforeEach(() => {
+			// The file-level pinia is left mid-drag by the drop tests, which turns a click into a mapping drop.
+			pinia = createTestingPinia({
+				initialState: { [STORES.SETTINGS]: SETTINGS_STORE_DEFAULT_STATE },
+				stubActions: false,
+			});
+		});
+
+		it('should hide the value of a field listed in Fields to Mask', async () => {
+			const { findAllByTestId } = renderComponent({
+				pinia,
+				props: {
+					node: editFieldsNode({ maskSensitiveFields: true }),
+					value: passwordAndNameFields(),
+				},
+			});
+
+			const [passwordRow, nameRow] = await findAllByTestId('assignment');
+			expect(getValueInput(passwordRow)).toHaveAttribute('type', 'password');
+			expect(within(passwordRow).queryByText('demo-password-123')).not.toBeInTheDocument();
+			expect(getValueInput(nameRow)).toHaveAttribute('type', 'text');
+			expect(getValueInput(nameRow)).toHaveValue('Alice');
+		});
+
+		it('should still emit the real value typed into a hidden field', async () => {
+			const { findAllByTestId, emitted } = renderComponent({
+				pinia,
+				props: {
+					node: editFieldsNode({ maskSensitiveFields: true }),
+					value: {
+						assignments: [{ id: 'id-password', name: 'password', value: '', type: 'string' }],
+					},
+				},
+			});
+
+			const [passwordRow] = await findAllByTestId('assignment');
+			const valueInput = getValueInput(passwordRow);
+			expect(valueInput).toHaveAttribute('type', 'password');
+
+			await userEvent.type(valueInput, 'demo-password-123');
+			await userEvent.tab();
+
+			await waitFor(
+				() =>
+					expect(emitted('valueChanged')?.at(-1)).toEqual([
+						{
+							name: 'parameters.fields',
+							node: 'Edit Fields',
+							value: {
+								assignments: [
+									{
+										id: 'id-password',
+										name: 'password',
+										value: 'demo-password-123',
+										type: 'string',
+									},
+								],
+							},
+						},
+					]),
+				{ timeout: 2000 },
+			);
+		});
+
+		it('should show values when Mask Sensitive Fields is off', async () => {
+			const { findAllByTestId } = renderComponent({
+				pinia,
+				props: {
+					node: editFieldsNode({ maskSensitiveFields: false }),
+					value: passwordAndNameFields(),
+				},
+			});
+
+			const [passwordRow] = await findAllByTestId('assignment');
+			expect(getValueInput(passwordRow)).toHaveAttribute('type', 'text');
+			expect(getValueInput(passwordRow)).toHaveValue('demo-password-123');
+		});
+
+		it('should show values for nodes other than Edit Fields', async () => {
+			const { findAllByTestId } = renderComponent({
+				pinia,
+				props: {
+					node: {
+						...editFieldsNode({ maskSensitiveFields: true }),
+						name: 'Evaluation',
+						type: EVALUATION_NODE_TYPE,
+						typeVersion: 4.8,
+					},
+					value: passwordAndNameFields(),
+				},
+			});
+
+			const [passwordRow] = await findAllByTestId('assignment');
+			expect(getValueInput(passwordRow)).toHaveAttribute('type', 'text');
+			expect(getValueInput(passwordRow)).toHaveValue('demo-password-123');
 		});
 	});
 });

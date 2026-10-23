@@ -4,6 +4,8 @@ import type { INodeUi } from '@/Interface';
 import { NodeConnectionTypes, type IDataObject, type IRunExecutionData } from 'n8n-workflow';
 import { clearJsonKey, convertPath } from '@/app/utils/typesUtils';
 import { executionDataToJson } from '@/app/utils/nodeTypesUtils';
+import { isObj } from '@/app/utils/typeGuards';
+import { maskFields } from '@/features/ndv/runData/maskedValue';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
@@ -33,9 +35,11 @@ const props = withDefaults(
 		outputIndex: number | undefined;
 		runIndex: number | undefined;
 		execution?: IRunExecutionData;
+		displayMaskedFieldNames?: ReadonlySet<string>;
 	}>(),
 	{
 		selectedJsonPath: nonExistingJsonPath,
+		displayMaskedFieldNames: undefined,
 	},
 );
 
@@ -67,6 +71,8 @@ const normalisedJsonPath = computed((): string => {
 	return noSelection.value ? '[""]' : props.selectedJsonPath;
 });
 
+const isDataObject = (value: unknown): value is IDataObject => isObj(value);
+
 function getJsonValue(): string {
 	let selectedValue;
 	if (noSelection.value) {
@@ -85,6 +91,13 @@ function getJsonValue(): string {
 					NodeConnectionTypes.Main,
 					props.execution,
 				),
+			);
+		}
+
+		const names = props.displayMaskedFieldNames;
+		if (names && names.size > 0 && Array.isArray(selectedValue)) {
+			selectedValue = selectedValue.map((item: unknown) =>
+				isDataObject(item) ? maskFields(item, names) : item,
 			);
 		}
 	} else {

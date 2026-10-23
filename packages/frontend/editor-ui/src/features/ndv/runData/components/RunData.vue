@@ -67,6 +67,7 @@ import { useCollaborationStore } from '@/features/collaboration/collaboration/co
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { executionDataToJson } from '@/app/utils/nodeTypesUtils';
 import { getGenericHints } from '@/app/utils/nodeViewUtils';
+import { maskFields } from '@/features/ndv/runData/maskedValue';
 import { searchInObject } from '@/app/utils/objectUtils';
 import { clearJsonKey, isEmpty, isPresent } from '@/app/utils/typesUtils';
 import isEqual from 'lodash/isEqual';
@@ -149,6 +150,7 @@ type Props = {
 	disableAiContent?: boolean;
 	collapsingTableColumnName: string | null;
 	truncateLimit?: number;
+	displayMaskedFieldNames?: ReadonlySet<string>;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -174,6 +176,7 @@ const props = withDefaults(defineProps<Props>(), {
 	tableHeaderBgColor: 'base',
 	workflowExecution: undefined,
 	disableAiContent: false,
+	displayMaskedFieldNames: undefined,
 });
 
 defineSlots<{
@@ -495,7 +498,9 @@ const rawInputData = computed(() =>
 	getRawInputData(props.runIndex, currentOutputIndex.value, connectionType.value),
 );
 
-const unfilteredInputData = computed(() => getPinDataOrLiveData(rawInputData.value));
+const unfilteredInputData = computed(() =>
+	maskForDisplay(getPinDataOrLiveData(rawInputData.value)),
+);
 const inputData = computed(() => getFilteredData(unfilteredInputData.value));
 const inputDataPage = computed(() => {
 	const offset = pageSize.value * (currentPage.value - 1);
@@ -1284,6 +1289,13 @@ function getPinDataOrLiveData(data: INodeExecutionData[]): INodeExecutionData[] 
 	return data;
 }
 
+function maskForDisplay(items: INodeExecutionData[]): INodeExecutionData[] {
+	const names = props.displayMaskedFieldNames;
+	if (!names?.size) return items;
+
+	return items.map((item) => ({ ...item, json: maskFields(item.json, names) }));
+}
+
 function getFilteredData(data: INodeExecutionData[]): INodeExecutionData[] {
 	if (!search.value || isSchemaView.value) {
 		return data;
@@ -1307,7 +1319,7 @@ function getDataCount(
 	}
 
 	const rawInputData = getRawInputData(runIndex, outputIndex, connectionType);
-	const pinOrLiveData = getPinDataOrLiveData(rawInputData);
+	const pinOrLiveData = maskForDisplay(getPinDataOrLiveData(rawInputData));
 	return getFilteredData(pinOrLiveData).length;
 }
 
@@ -2132,6 +2144,7 @@ defineExpose({ enterEditMode });
 					:compact="props.compact"
 					:disable-hover-highlight="props.disableHoverHighlight"
 					:collapsing-column-name="collapsingTableColumnName"
+					:display-masked-field-names="displayMaskedFieldNames"
 					@mounted="emit('tableMounted', $event)"
 					@active-row-changed="onItemHover"
 					@display-mode-change="onDisplayModeChange"
@@ -2154,6 +2167,7 @@ defineExpose({ enterEditMode });
 					:search="search"
 					:compact="props.compact"
 					:execution="workflowExecution"
+					:display-masked-field-names="displayMaskedFieldNames"
 				/>
 			</Suspense>
 
@@ -2184,6 +2198,7 @@ defineExpose({ enterEditMode });
 					:compact="props.compact"
 					:truncate-limit="props.truncateLimit"
 					:preview-execution="workflowsStore.lastSuccessfulExecution"
+					:display-masked-field-names="displayMaskedFieldNames"
 					@clear:search="onSearchClear"
 					@execute="executeNode"
 				/>

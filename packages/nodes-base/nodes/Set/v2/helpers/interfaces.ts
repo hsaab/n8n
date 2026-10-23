@@ -6,6 +6,8 @@ export type SetNodeOptions = {
 	include?: IncludeMods;
 	includeBinary?: boolean;
 	stripBinary?: boolean;
+	maskSensitiveFields?: boolean;
+	fieldsToMask?: string;
 };
 
 export type SetField = {

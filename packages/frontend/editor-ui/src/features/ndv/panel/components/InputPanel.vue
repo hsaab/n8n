@@ -14,6 +14,8 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { waitingNodeTooltip } from '@/features/execution/executions/executions.utils';
 import { useExecutionRedaction } from '@/features/execution/executions/composables/useExecutionRedaction';
+import { structuralComputed } from '@n8n/composables/structuralComputed';
+import isEqual from 'lodash/isEqual';
 import uniqBy from 'lodash/uniqBy';
 import {
 	type INodeInputConfiguration,
@@ -28,6 +30,7 @@ import NodeExecuteButton from '@/app/components/NodeExecuteButton.vue';
 import NDVEmptyState from './NDVEmptyState.vue';
 import RedactedDataState from './RedactedDataState.vue';
 import RunData from '@/features/ndv/runData/components/RunData.vue';
+import { getMaskedFieldNames } from '@/features/ndv/runData/maskedValue';
 import WireMeUp from './WireMeUp.vue';
 import { type IRunDataDisplayMode } from '@/Interface';
 import { I18nT } from 'vue-i18n';
@@ -124,6 +127,13 @@ const openWorkflowSettings = () => {
 
 const activeNode = computed(
 	() => workflowDocumentStore?.value?.getNodeByName(props.activeNodeName) ?? null,
+);
+
+// Any parameter edit replaces node.parameters, so without the equality gate each keystroke
+// would hand RunData a new Set and re-mask every input item.
+const displayMaskedFieldNames = structuralComputed(
+	() => getMaskedFieldNames(activeNode.value),
+	isEqual,
 );
 
 const rootNode = computed(() => {
@@ -432,6 +442,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 		:compact="compact"
 		:truncate-limit="truncateLimit"
 		:disable-display-mode-selection="disableDisplayModeSelection"
+		:display-masked-field-names="displayMaskedFieldNames"
 		@activate-pane="activatePane"
 		@item-hover="onItemHover"
 		@link-run="onLinkRun"
