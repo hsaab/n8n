@@ -95,10 +95,14 @@ function getJsonValue(): string {
 		}
 
 		const names = props.displayMaskedFieldNames;
-		if (names && names.size > 0 && Array.isArray(selectedValue)) {
-			selectedValue = selectedValue.map((item: unknown) =>
-				isDataObject(item) ? maskFields(item, names) : item,
-			);
+		if (names && names.size > 0) {
+			if (Array.isArray(selectedValue)) {
+				selectedValue = selectedValue.map((item: unknown) =>
+					isDataObject(item) ? maskFields(item, names) : item,
+				);
+			} else if (isDataObject(selectedValue)) {
+				selectedValue = maskFields(selectedValue, names);
+			}
 		}
 	} else {
 		const jsonPath = normalisedJsonPath.value.startsWith('$')
