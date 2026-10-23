@@ -10,9 +10,17 @@ import { Container } from '@n8n/di';
 export class InsightsModule implements ModuleInterface {
 	async init() {
 		await import('./insights.controller');
+		await import('./analyst/insights-analyst.controller');
 
 		const { InsightsService } = await import('./insights.service');
 		await Container.get(InsightsService).init();
+
+		const { InstanceSettings } = await import('n8n-core');
+		const instanceType = Container.get(InstanceSettings).instanceType;
+		if (instanceType === 'main' || instanceType === 'webhook') {
+			const { InsightsAnalystSeed } = await import('./analyst/insights-analyst.seed');
+			await Container.get(InsightsAnalystSeed).run();
+		}
 	}
 
 	async entities() {
