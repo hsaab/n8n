@@ -2,7 +2,8 @@ import { createTestNode, createTestWorkflow, mockNodeTypeDescription } from '@/_
 import { createComponentRenderer } from '@/__tests__/render';
 import InputPanel, { type Props } from './InputPanel.vue';
 import { createTestingPinia } from '@pinia/testing';
-import { waitFor } from '@testing-library/vue';
+import { waitFor, within } from '@testing-library/vue';
+import { userEvent } from '@testing-library/user-event';
 import {
 	createRunExecutionData,
 	NodeConnectionTypes,
@@ -45,6 +46,13 @@ vi.mock('@vueuse/core', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('@vueuse/core')>();
 	return { ...actual, useElementSize: vi.fn(actual.useElementSize) };
 });
+
+const { copy } = vi.hoisted(() => ({ copy: vi.fn<(value: string) => Promise<void>>() }));
+vi.mock('@/app/composables/useClipboard', () => ({
+	useClipboard: () => ({
+		copy,
+	}),
+}));
 
 const nodes = [
 	createTestNode({ id: 'node1', name: 'Node 1' }),
@@ -367,5 +375,22 @@ describe('InputPanel', () => {
 				expect(getAllByTestId('ndv-masked-value')).toHaveLength(1);
 			},
 		);
+
+		it('should copy the masked upstream values from the JSON view when nothing is selected', async () => {
+			copy.mockClear();
+			const { findByTestId } = renderWithActiveNode(editFieldsNode({ maskSensitiveFields: true }), {
+				displayMode: 'json',
+			});
+
+			await userEvent.click(within(await findByTestId('ndv-json-actions')).getByRole('button'));
+
+			expect(copy).toHaveBeenCalledTimes(1);
+			const copied = copy.mock.calls[0][0];
+			expect(copied).toContain('"username": "ada"');
+			expect(copied).not.toContain('demo-password-123');
+			expect(copied).not.toContain('demo-token-456');
+			expect(copied).not.toContain('demo-token-789');
+			expect(copied).toContain('"password": "***"');
+		});
 	});
 });
