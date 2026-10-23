@@ -164,6 +164,7 @@ const isMasked = (key: unknown, value: unknown) => {
 				:output-index="outputIndex"
 				:run-index="runIndex"
 				:execution="execution"
+				:display-masked-field-names="displayMaskedFieldNames"
 			/>
 		</Suspense>
 		<Draggable
