@@ -20,7 +20,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { setupServer } from '@/__tests__/server';
 import { defaultNodeDescriptions, mockNodes } from '@/__tests__/mocks';
 import { useI18n } from '@n8n/i18n';
-import { createRunExecutionData } from 'n8n-workflow';
+import { createRunExecutionData, type INodeExecutionData } from 'n8n-workflow';
 
 vi.mock('vue-router', () => {
 	return {
@@ -44,7 +44,9 @@ vi.mock('@/app/composables/usePinnedData', async (importOriginal) => {
 
 const i18n = useI18n();
 
-async function createPiniaWithActiveNode() {
+async function createPiniaWithActiveNode(
+	secondRunItems: INodeExecutionData[] = [{ json: { id: 3, name: 'Second run 1' } }],
+) {
 	const node = mockNodes[0];
 	const workflow = mock<IWorkflowDb>({
 		id: '1',
@@ -110,16 +112,7 @@ async function createPiniaWithActiveNode() {
 							executionIndex: 1,
 							executionTime: 1,
 							data: {
-								main: [
-									[
-										{
-											json: {
-												id: 3,
-												name: 'Second run 1',
-											},
-										},
-									],
-								],
+								main: [secondRunItems],
 							},
 							source: [null],
 						},
@@ -521,4 +514,66 @@ describe('RunDataJsonActions', () => {
 			),
 		);
 	});
+
+	it.each([
+		['masked key', '[0].password', '***'],
+		['nested object', '[0].creds', JSON.stringify({ token: '***' }, null, 2)],
+		[
+			'whole item',
+			'[0]',
+			JSON.stringify({ id: 3, username: 'ada', password: '***', creds: { token: '***' } }, null, 2),
+		],
+	])(
+		'should copy the selected %s from the masked data on screen',
+		async (_, selectedJsonPath, expected) => {
+			const { pinia, activeNode } = await createPiniaWithActiveNode([
+				{
+					json: {
+						id: 3,
+						username: 'ada',
+						password: 'demo-password-123',
+						creds: { token: 'demo-token-456' },
+					},
+				},
+			]);
+			const renderComponent = createComponentRenderer(RunDataJsonActions, {
+				props: {
+					node: activeNode ?? undefined,
+					paneType: 'input',
+					pushRef: 'ref',
+					distanceFromActive: 0,
+					selectedJsonPath,
+					jsonData: [{ id: 3, username: 'ada', password: '***', creds: { token: '***' } }],
+					outputIndex: 0,
+					runIndex: 1,
+					displayMaskedFieldNames: new Set(['password', 'token']),
+				},
+				global: {
+					provide: {
+						[WorkflowIdKey as unknown as string]: computed(() => '1'),
+					},
+					mocks: {
+						$route: {
+							name: VIEWS.WORKFLOW,
+						},
+					},
+				},
+			});
+
+			renderComponent({
+				pinia,
+			});
+
+			await waitFor(() =>
+				expect(screen.getByText(i18n.baseText('runData.copyValue'))).toBeInTheDocument(),
+			);
+
+			await fireEvent.click(screen.getByText(i18n.baseText('runData.copyValue')));
+
+			expect(copy).toHaveBeenCalledWith(expected);
+			expect(copy).not.toHaveBeenCalledWith(
+				expect.stringMatching(/demo-password-123|demo-token-456/),
+			);
+		},
+	);
 });
