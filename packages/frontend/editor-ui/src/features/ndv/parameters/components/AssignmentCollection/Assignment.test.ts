@@ -326,5 +326,75 @@ describe('Assignment.vue', () => {
 			expect(getValueInput()).toHaveAttribute('type', 'password');
 			await waitFor(() => expect(getValueInput()).toHaveValue(value));
 		});
+
+		it('should keep a masked value out of session recordings while it is an expression', async () => {
+			renderComponent({
+				props: {
+					node: maskingEditFieldsNode,
+					modelValue: { id: '1', name: 'password', type: 'string', value: '={{ $json.password }}' },
+				},
+			});
+
+			const expressionInput = await within(getValueContainer()).findByTestId(
+				'inline-expression-editor-input',
+			);
+			expect(expressionInput.closest('.ph-no-capture')).not.toBeNull();
+		});
+
+		it('should leave a value under an unmasked name capturable', () => {
+			renderComponent({
+				props: {
+					node: maskingEditFieldsNode,
+					modelValue: { id: '1', name: 'username', type: 'string', value: 'demo-user' },
+				},
+			});
+
+			expect(getValueInput()).toHaveAttribute('type', 'text');
+			expect(getValueInput()?.closest('.ph-no-capture')).toBeNull();
+		});
+
+		it.each([
+			['hidden string', { name: 'token', type: 'string', value: 'demo-token-456' }, 'password', 0],
+			[
+				'hidden object',
+				{ name: 'token', type: 'object', value: '{"ssn":"demo-ssn-123"}' },
+				'password',
+				0,
+			],
+			['visible string', { name: 'username', type: 'string', value: 'demo-user' }, 'text', 1],
+		])(
+			'should offer the open editor button only for visible values (%s)',
+			(_label, row, inputType, openers) => {
+				renderComponent({
+					props: {
+						node: maskingEditFieldsNode,
+						modelValue: { id: '1', ...row },
+					},
+				});
+
+				expect(getValueInput()).toHaveAttribute('type', inputType);
+				expect(getValueContainer().querySelectorAll('.textarea-modal-opener')).toHaveLength(
+					openers,
+				);
+			},
+		);
+
+		it('should keep a hidden value out of the value box markup', async () => {
+			renderComponent({
+				props: {
+					node: maskingEditFieldsNode,
+					modelValue: { id: '1', name: 'password', type: 'string', value: 'demo-password-123' },
+				},
+			});
+
+			const valueInput = getValueInput();
+			expect(valueInput).toHaveAttribute('type', 'password');
+			await waitFor(() => expect(valueInput).toHaveValue('demo-password-123'));
+
+			// The input's own value attribute holds the secret, so it is the one attribute removed before the check.
+			const rowMarkup = screen.getByTestId('assignment').cloneNode(true) as HTMLElement;
+			rowMarkup.querySelector('input[type="password"]')?.removeAttribute('value');
+			expect(rowMarkup.outerHTML).not.toContain('demo-password-123');
+		});
 	});
 });
