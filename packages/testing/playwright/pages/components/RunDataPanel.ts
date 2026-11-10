@@ -102,6 +102,10 @@ export class RunDataPanel {
 		return this.root.locator('.json-data');
 	}
 
+	getJsonCopyButton() {
+		return this.root.getByTestId('ndv-json-actions').getByRole('button');
+	}
+
 	getJsonProperty(propertyName: string) {
 		return this.root
 			.locator('.json-data')

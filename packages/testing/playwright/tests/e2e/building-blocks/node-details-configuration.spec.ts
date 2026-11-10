@@ -250,6 +250,43 @@ test.describe(
 			}
 		});
 
+		test('should copy masked values from the Edit Fields input panel JSON view', async ({
+			n8n,
+		}) => {
+			await n8n.canvas.addNode('Manual Trigger');
+			await n8n.canvas.addNode('Edit Fields (Set)');
+			await n8n.ndv.editFields.setFieldsValues([
+				{ name: 'username', type: 'string', value: 'demo-user' },
+				{ name: 'password', type: 'string', value: 'demo-password-123' },
+				{ name: 'token', type: 'string', value: 'demo-token-456' },
+			]);
+			await n8n.ndv.close();
+
+			await n8n.canvas.addNode('Edit Fields (Set)', { fromNode: 'Edit Fields' });
+			await n8n.ndv.addParameterOptionByName('Mask Sensitive Fields');
+			await n8n.ndv.setParameterSwitch('maskSensitiveFields', true);
+			await n8n.ndv.executePrevious();
+
+			const inputPanel = n8n.ndv.inputPanel;
+			const inputData = inputPanel.getDataContainer();
+			await n8n.clipboard.grant();
+			await n8n.clipboard.writeText('');
+			await inputPanel.switchDisplayMode('json');
+			await expect(inputData).toContainText('demo-user');
+
+			await inputData.hover();
+			await inputPanel.getJsonCopyButton().click();
+
+			await expect
+				.poll(async () => await n8n.clipboard.readText())
+				.toContain('"username": "demo-user"');
+			const copied = await n8n.clipboard.readText();
+			expect(copied).toContain('"password": "***"');
+			expect(copied).toContain('"token": "***"');
+			expect(copied).not.toContain('demo-password-123');
+			expect(copied).not.toContain('demo-token-456');
+		});
+
 		test('should show upstream values unchanged when masking is off', async ({ n8n }) => {
 			await n8n.canvas.addNode('Manual Trigger');
 			await n8n.canvas.addNode('Edit Fields (Set)');
