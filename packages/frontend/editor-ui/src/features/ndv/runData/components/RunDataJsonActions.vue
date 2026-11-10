@@ -99,6 +99,8 @@ function getJsonValue(): string {
 			selectedValue = selectedValue.map((item: unknown) =>
 				isDataObject(item) ? maskFields(item, names) : item,
 			);
+		} else if (names && names.size > 0 && isDataObject(selectedValue)) {
+			selectedValue = maskFields(selectedValue, names);
 		}
 	} else {
 		const jsonPath = normalisedJsonPath.value.startsWith('$')
