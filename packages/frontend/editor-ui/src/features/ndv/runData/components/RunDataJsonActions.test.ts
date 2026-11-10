@@ -14,6 +14,7 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import { usePinnedData } from '@/app/composables/usePinnedData';
 
 import { createComponentRenderer } from '@/__tests__/render';
 import { setupServer } from '@/__tests__/server';
@@ -35,6 +36,11 @@ vi.mock('@/app/composables/useClipboard', () => ({
 		copy,
 	}),
 }));
+
+vi.mock('@/app/composables/usePinnedData', async (importOriginal) => {
+	const actual = await importOriginal<{ usePinnedData: typeof usePinnedData }>();
+	return { ...actual, usePinnedData: vi.fn(actual.usePinnedData) };
+});
 
 const i18n = useI18n();
 
@@ -394,5 +400,125 @@ describe('RunDataJsonActions', () => {
 		await fireEvent.click(option);
 
 		expect(copy).toHaveBeenCalledWith('{{ $node["Manual Trigger"].json["name"] }}');
+	});
+
+	it('should mask pinned items when copying with nothing selected', async () => {
+		const { pinia, activeNode } = await createPiniaWithActiveNode();
+		useWorkflowDocumentStore(createWorkflowDocumentId('1')).pinNodeData(mockNodes[0].name, [
+			{ json: { id: 9, name: 'Pinned', password: 'pinned-secret' } },
+		]);
+		const renderComponent = createComponentRenderer(RunDataJsonActions, {
+			props: {
+				node: activeNode ?? undefined,
+				paneType: 'input',
+				pushRef: 'ref',
+				distanceFromActive: 0,
+				selectedJsonPath: nonExistingJsonPath,
+				jsonData: [
+					{
+						id: 9,
+						name: 'Pinned',
+						password: '***',
+					},
+				],
+				outputIndex: 0,
+				runIndex: 1,
+				displayMaskedFieldNames: new Set(['password', 'token']),
+			},
+			global: {
+				provide: {
+					[WorkflowIdKey as unknown as string]: computed(() => '1'),
+				},
+				mocks: {
+					$route: {
+						name: VIEWS.WORKFLOW,
+					},
+				},
+			},
+		});
+
+		const { getByTestId } = renderComponent({
+			pinia,
+		});
+
+		await waitFor(() => expect(getByTestId('ndv-json-actions')).toBeInTheDocument());
+
+		const button = within(getByTestId('ndv-json-actions')).getByRole('button');
+
+		await fireEvent.click(button);
+
+		expect(copy).toHaveBeenCalledWith(
+			JSON.stringify(
+				[
+					{
+						id: 9,
+						name: 'Pinned',
+						password: '***',
+					},
+				],
+				null,
+				2,
+			),
+		);
+	});
+
+	it('should mask a single pinned object when copying with nothing selected', async () => {
+		const { pinia, activeNode } = await createPiniaWithActiveNode();
+		const singleObject = { id: 1, password: 'pinned-secret', token: 'pinned-token' };
+		vi.mocked(usePinnedData).mockReturnValueOnce({
+			hasData: computed(() => true),
+			data: computed(() => singleObject),
+		} as unknown as ReturnType<typeof usePinnedData>);
+		const renderComponent = createComponentRenderer(RunDataJsonActions, {
+			props: {
+				node: activeNode ?? undefined,
+				paneType: 'input',
+				pushRef: 'ref',
+				distanceFromActive: 0,
+				selectedJsonPath: nonExistingJsonPath,
+				jsonData: [
+					{
+						id: 1,
+						password: '***',
+						token: '***',
+					},
+				],
+				outputIndex: 0,
+				runIndex: 1,
+				displayMaskedFieldNames: new Set(['password', 'token']),
+			},
+			global: {
+				provide: {
+					[WorkflowIdKey as unknown as string]: computed(() => '1'),
+				},
+				mocks: {
+					$route: {
+						name: VIEWS.WORKFLOW,
+					},
+				},
+			},
+		});
+
+		const { getByTestId } = renderComponent({
+			pinia,
+		});
+
+		await waitFor(() => expect(getByTestId('ndv-json-actions')).toBeInTheDocument());
+
+		const button = within(getByTestId('ndv-json-actions')).getByRole('button');
+
+		await fireEvent.click(button);
+
+		expect(copy).toHaveBeenCalledWith(
+			JSON.stringify(
+				{
+					id: 1,
+					password: '***',
+					token: '***',
+				},
+				null,
+				2,
+			),
+		);
 	});
 });
