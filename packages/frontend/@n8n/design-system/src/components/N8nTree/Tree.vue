@@ -12,7 +12,7 @@ interface TreeProps {
 
 defineSlots<{
 	label(props: { label: string; path: Array<string | number> }): never;
-	value(props: { value: Value }): never;
+	value(props: { value: Value; label: string }): never;
 	binary(props: { value: BinaryMetadata; path: Array<string | number>; depth?: number }): never;
 }>();
 
@@ -70,7 +70,7 @@ const N8nTree = getCurrentInstance()?.type;
 				<slot v-if="!!$slots.label" name="label" :label="label" :path="getPath(label)" />
 				<span v-else>{{ label }}</span>
 				<span>:</span>
-				<slot v-if="!!$slots.value" name="value" :value="value[label]" />
+				<slot v-if="!!$slots.value" name="value" :value="value[label]" :label="label" />
 				<span v-else>{{ value[label] }}</span>
 			</div>
 			<div v-else>

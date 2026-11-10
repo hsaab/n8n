@@ -1,5 +1,7 @@
 import { createComponentRenderer } from '@/__tests__/render';
+import { SET_NODE_TYPE } from '@/app/constants';
 import RunDataTable from '@/features/ndv/runData/components/RunDataTable.vue';
+import type { INodeUi } from '@/Interface';
 import { createTestingPinia } from '@pinia/testing';
 import { cleanup, fireEvent, waitFor, within } from '@testing-library/vue';
 import type { INodeExecutionData } from 'n8n-workflow';
@@ -58,6 +60,16 @@ const renderComponent = createComponentRenderer(RunDataTable, {
 	},
 });
 
+function getFirstTableCellForColumn(container: HTMLElement, columnName: string) {
+	const headers = within(container).getAllByRole('columnheader');
+	const header = within(container).getByRole('columnheader', { name: columnName });
+	const columnIndex = headers.indexOf(header);
+	const firstRow = within(container).getAllByRole('row')[1];
+	const cells = within(firstRow).getAllByRole('cell');
+	const cell = cells[columnIndex];
+	return cell;
+}
+
 describe('RunDataTable.vue', () => {
 	beforeEach(cleanup);
 
@@ -110,16 +122,6 @@ describe('RunDataTable.vue', () => {
 	});
 
 	it('renders null values correctly', () => {
-		function getFirstTableCellForColumn(container: HTMLElement, columnName: string) {
-			const headers = within(container).getAllByRole('columnheader');
-			const header = within(container).getByRole('columnheader', { name: columnName });
-			const columnIndex = headers.indexOf(header);
-			const firstRow = within(container).getAllByRole('row')[1];
-			const cells = within(firstRow).getAllByRole('cell');
-			const cell = cells[columnIndex];
-			return cell;
-		}
-
 		const cases = [
 			{ key: 'emptyString', value: '', expected: 'empty' },
 			{ key: 'emptyObject', value: {}, expected: '{empty object}' },
@@ -193,5 +195,135 @@ describe('RunDataTable.vue', () => {
 		await fireEvent.click(rendered.getAllByLabelText('Collapse rows')[0]);
 		await fireEvent.click(rendered.getAllByLabelText('Collapse rows')[1]);
 		expect(rendered.emitted('collapsingColumnChanged')).toEqual([[null], ['lastName']]);
+	});
+
+	describe('masked values from Edit Fields', () => {
+		const maskedSetNode: INodeUi = {
+			parameters: { options: { maskSensitiveFields: true } },
+			id: '5d2b7e1a-0c4f-4b8e-9a61-2f3c8d9e7b10',
+			name: 'Edit Fields',
+			type: SET_NODE_TYPE,
+			typeVersion: 3.5,
+			position: [380, 1060],
+			disabled: false,
+		};
+
+		it('shows a "Masked" marker next to a masked value and keeps the masked text', () => {
+			const { container, getAllByTestId } = renderComponent({
+				props: {
+					node: maskedSetNode,
+					inputData: [{ json: { password: '***', name: 'Ada' } }],
+				},
+			});
+
+			const markers = getAllByTestId('ndv-masked-value');
+			expect(markers).toHaveLength(1);
+			expect(markers[0]).toHaveTextContent('Masked');
+
+			const passwordCell = getFirstTableCellForColumn(container as HTMLElement, 'password');
+			expect(within(passwordCell).getByText('***')).toBeInTheDocument();
+			expect(passwordCell).toContainElement(markers[0]);
+		});
+
+		it('shows a "Masked" marker next to a masked value nested inside an object', () => {
+			const { container } = renderComponent({
+				props: {
+					node: maskedSetNode,
+					inputData: [{ json: { creds: { token: '***' } } }],
+				},
+			});
+
+			const credsCell = getFirstTableCellForColumn(container as HTMLElement, 'creds');
+			expect(credsCell).toHaveTextContent('token');
+			expect(within(credsCell).getByText('***')).toBeInTheDocument();
+			expect(within(credsCell).getByTestId('ndv-masked-value')).toHaveTextContent('Masked');
+		});
+
+		it('marks listed keys inside an array of objects in any letter case', () => {
+			const { container, getAllByTestId } = renderComponent({
+				props: {
+					node: maskedSetNode,
+					inputData: [
+						{
+							json: {
+								Password: '***',
+								sessions: [
+									{ id: 1, token: '***' },
+									{ id: 2, token: '****' },
+								],
+							},
+						},
+					],
+				},
+			});
+
+			expect(getAllByTestId('ndv-masked-value')).toHaveLength(2);
+
+			const passwordCell = getFirstTableCellForColumn(container as HTMLElement, 'Password');
+			expect(within(passwordCell).getByTestId('ndv-masked-value')).toBeInTheDocument();
+
+			const sessionsCell = getFirstTableCellForColumn(container as HTMLElement, 'sessions');
+			const sessionsMarker = within(sessionsCell).getByTestId('ndv-masked-value');
+			const maskedTokenRow = within(sessionsCell).getByText('***').closest('div');
+			const userTokenRow = within(sessionsCell).getByText('****').closest('div');
+			expect(maskedTokenRow).toHaveTextContent('token');
+			expect(maskedTokenRow).toContainElement(sessionsMarker);
+			expect(userTokenRow).not.toContainElement(sessionsMarker);
+		});
+
+		it('shows the "Masked" marker only for fields still listed in Fields to Mask', () => {
+			const { container, getAllByTestId } = renderComponent({
+				props: {
+					node: {
+						...maskedSetNode,
+						parameters: { options: { maskSensitiveFields: true, fieldsToMask: 'password' } },
+					},
+					inputData: [{ json: { password: '***', token: '***', creds: { token: '***' } } }],
+				},
+			});
+
+			const markers = getAllByTestId('ndv-masked-value');
+			expect(markers).toHaveLength(1);
+
+			const passwordCell = getFirstTableCellForColumn(container as HTMLElement, 'password');
+			expect(passwordCell).toContainElement(markers[0]);
+		});
+
+		it('shows no marker when masking is turned off on the Edit Fields node', () => {
+			const { container, queryByTestId } = renderComponent({
+				props: {
+					node: { ...maskedSetNode, parameters: { options: { maskSensitiveFields: false } } },
+					inputData: [{ json: { password: '***', name: 'Ada' } }],
+				},
+			});
+
+			const passwordCell = getFirstTableCellForColumn(container as HTMLElement, 'password');
+			expect(within(passwordCell).getByText('***')).toBeInTheDocument();
+			expect(queryByTestId('ndv-masked-value')).not.toBeInTheDocument();
+		});
+
+		it('should mark values masked for display', () => {
+			const { container, getAllByTestId } = renderComponent({
+				props: {
+					displayMaskedFieldNames: new Set(['password', 'token']),
+					inputData: [
+						{
+							json: { username: 'ada', password: '***', apiKey: '***', creds: { token: '***' } },
+						},
+					],
+				},
+			});
+
+			const markers = getAllByTestId('ndv-masked-value');
+			expect(markers).toHaveLength(2);
+
+			const passwordCell = getFirstTableCellForColumn(container as HTMLElement, 'password');
+			const credsCell = getFirstTableCellForColumn(container as HTMLElement, 'creds');
+			expect(passwordCell).toContainElement(markers[0]);
+			expect(credsCell).toContainElement(markers[1]);
+			expect(getFirstTableCellForColumn(container as HTMLElement, 'username')).toHaveTextContent(
+				'ada',
+			);
+		});
 	});
 });

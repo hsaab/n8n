@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import TextWithHighlights from './TextWithHighlights.vue';
+import MaskedValueMarker from './MaskedValueMarker.vue';
 import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import { saveAs } from 'file-saver';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -29,6 +30,7 @@ type Props = {
 	preview?: boolean;
 	locked?: boolean;
 	lockedTooltip?: string;
+	masked?: boolean;
 	runIndex?: number;
 	binaryData?: BinaryMetadata;
 };
@@ -116,6 +118,7 @@ const emit = defineEmits<{
 			:content="value"
 			:search="props.search"
 		/>
+		<MaskedValueMarker v-if="masked" />
 		<div v-if="props.binaryData && !preview" class="binary-controls">
 			<div
 				class="pill binary-control-pill"

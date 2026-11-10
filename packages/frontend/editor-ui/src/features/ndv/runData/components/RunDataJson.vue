@@ -13,6 +13,8 @@ import { getMappedExpression } from '@/app/utils/mappingUtils';
 import { nonExistingJsonPath } from '@/app/constants';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import TextWithHighlights from './TextWithHighlights.vue';
+import MaskedValueMarker from './MaskedValueMarker.vue';
+import { getMaskedFieldNames, isMaskedValue } from '@/features/ndv/runData/maskedValue';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useElementSize } from '@vueuse/core';
 import { useTelemetryContext } from '@/app/composables/useTelemetryContext';
@@ -37,9 +39,11 @@ const props = withDefaults(
 		search: string | undefined;
 		compact?: boolean;
 		execution?: IRunExecutionData;
+		displayMaskedFieldNames?: ReadonlySet<string>;
 	}>(),
 	{
 		editMode: () => ({}),
+		displayMaskedFieldNames: undefined,
 	},
 );
 
@@ -57,6 +61,7 @@ const jsonDataContainer = ref(null);
 const { height } = useElementSize(jsonDataContainer);
 
 const jsonData = computed(() => executionDataToJson(props.inputData));
+const maskedFieldNames = computed(() => getMaskedFieldNames(props.node));
 
 const highlight = computed(() => ndvStore.highlightDraggables);
 
@@ -130,6 +135,13 @@ const formatValue = (value: unknown) => {
 const getListItemName = (path: string) => {
 	return path.replace(/^(\["?\d"?]\.?)/g, '');
 };
+
+const isMasked = (key: unknown, value: unknown) => {
+	return (
+		isMaskedValue(maskedFieldNames.value, key, value) ||
+		isMaskedValue(props.displayMaskedFieldNames, key, value)
+	);
+};
 </script>
 
 <template>
@@ -152,6 +164,7 @@ const getListItemName = (path: string) => {
 				:output-index="outputIndex"
 				:run-index="runIndex"
 				:execution="execution"
+				:display-masked-field-names="displayMaskedFieldNames"
 			/>
 		</Suspense>
 		<Draggable
@@ -208,6 +221,7 @@ const getListItemName = (path: string) => {
 						}"
 						class="ph-no-capture"
 					/>
+					<MaskedValueMarker v-if="isMasked(node.key, node.content)" />
 				</template>
 			</VueJsonPretty>
 		</Draggable>

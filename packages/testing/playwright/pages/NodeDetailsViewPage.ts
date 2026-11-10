@@ -386,11 +386,13 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	async setParameterSwitch(parameterName: string, enabled: boolean): Promise<void> {
-		const switchElement = this.getParameterInput(parameterName).locator('.el-switch');
-		const isCurrentlyEnabled = (await switchElement.getAttribute('aria-checked')) === 'true';
+		const parameterInput = this.getParameterInput(parameterName);
+		const switchInput = parameterInput.getByRole('switch');
+		const isCurrentlyEnabled = (await switchInput.getAttribute('aria-checked')) === 'true';
 		if (isCurrentlyEnabled !== enabled) {
-			await switchElement.click();
+			await parameterInput.locator('.el-switch').click();
 		}
+		await expect(switchInput).toHaveAttribute('aria-checked', String(enabled));
 	}
 
 	getAssignmentCollectionContainer(paramName: string) {

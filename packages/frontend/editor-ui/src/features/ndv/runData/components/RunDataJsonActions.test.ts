@@ -14,12 +14,13 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import { usePinnedData } from '@/app/composables/usePinnedData';
 
 import { createComponentRenderer } from '@/__tests__/render';
 import { setupServer } from '@/__tests__/server';
 import { defaultNodeDescriptions, mockNodes } from '@/__tests__/mocks';
 import { useI18n } from '@n8n/i18n';
-import { createRunExecutionData } from 'n8n-workflow';
+import { createRunExecutionData, type INodeExecutionData } from 'n8n-workflow';
 
 vi.mock('vue-router', () => {
 	return {
@@ -36,9 +37,16 @@ vi.mock('@/app/composables/useClipboard', () => ({
 	}),
 }));
 
+vi.mock('@/app/composables/usePinnedData', async (importOriginal) => {
+	const actual = await importOriginal<{ usePinnedData: typeof usePinnedData }>();
+	return { ...actual, usePinnedData: vi.fn(actual.usePinnedData) };
+});
+
 const i18n = useI18n();
 
-async function createPiniaWithActiveNode() {
+async function createPiniaWithActiveNode(
+	secondRunItems: INodeExecutionData[] = [{ json: { id: 3, name: 'Second run 1' } }],
+) {
 	const node = mockNodes[0];
 	const workflow = mock<IWorkflowDb>({
 		id: '1',
@@ -104,16 +112,7 @@ async function createPiniaWithActiveNode() {
 							executionIndex: 1,
 							executionTime: 1,
 							data: {
-								main: [
-									[
-										{
-											json: {
-												id: 3,
-												name: 'Second run 1',
-											},
-										},
-									],
-								],
+								main: [secondRunItems],
 							},
 							source: [null],
 						},
@@ -395,4 +394,186 @@ describe('RunDataJsonActions', () => {
 
 		expect(copy).toHaveBeenCalledWith('{{ $node["Manual Trigger"].json["name"] }}');
 	});
+
+	it('should mask pinned items when copying with nothing selected', async () => {
+		const { pinia, activeNode } = await createPiniaWithActiveNode();
+		useWorkflowDocumentStore(createWorkflowDocumentId('1')).pinNodeData(mockNodes[0].name, [
+			{ json: { id: 9, name: 'Pinned', password: 'pinned-secret' } },
+		]);
+		const renderComponent = createComponentRenderer(RunDataJsonActions, {
+			props: {
+				node: activeNode ?? undefined,
+				paneType: 'input',
+				pushRef: 'ref',
+				distanceFromActive: 0,
+				selectedJsonPath: nonExistingJsonPath,
+				jsonData: [
+					{
+						id: 9,
+						name: 'Pinned',
+						password: '***',
+					},
+				],
+				outputIndex: 0,
+				runIndex: 1,
+				displayMaskedFieldNames: new Set(['password', 'token']),
+			},
+			global: {
+				provide: {
+					[WorkflowIdKey as unknown as string]: computed(() => '1'),
+				},
+				mocks: {
+					$route: {
+						name: VIEWS.WORKFLOW,
+					},
+				},
+			},
+		});
+
+		const { getByTestId } = renderComponent({
+			pinia,
+		});
+
+		await waitFor(() => expect(getByTestId('ndv-json-actions')).toBeInTheDocument());
+
+		const button = within(getByTestId('ndv-json-actions')).getByRole('button');
+
+		await fireEvent.click(button);
+
+		expect(copy).toHaveBeenCalledWith(
+			JSON.stringify(
+				[
+					{
+						id: 9,
+						name: 'Pinned',
+						password: '***',
+					},
+				],
+				null,
+				2,
+			),
+		);
+	});
+
+	it('should mask a single pinned object when copying with nothing selected', async () => {
+		const { pinia, activeNode } = await createPiniaWithActiveNode();
+		const singleObject = { id: 1, password: 'pinned-secret', token: 'pinned-token' };
+		vi.mocked(usePinnedData).mockReturnValueOnce({
+			hasData: computed(() => true),
+			data: computed(() => singleObject),
+		} as unknown as ReturnType<typeof usePinnedData>);
+		const renderComponent = createComponentRenderer(RunDataJsonActions, {
+			props: {
+				node: activeNode ?? undefined,
+				paneType: 'input',
+				pushRef: 'ref',
+				distanceFromActive: 0,
+				selectedJsonPath: nonExistingJsonPath,
+				jsonData: [
+					{
+						id: 1,
+						password: '***',
+						token: '***',
+					},
+				],
+				outputIndex: 0,
+				runIndex: 1,
+				displayMaskedFieldNames: new Set(['password', 'token']),
+			},
+			global: {
+				provide: {
+					[WorkflowIdKey as unknown as string]: computed(() => '1'),
+				},
+				mocks: {
+					$route: {
+						name: VIEWS.WORKFLOW,
+					},
+				},
+			},
+		});
+
+		const { getByTestId } = renderComponent({
+			pinia,
+		});
+
+		await waitFor(() => expect(getByTestId('ndv-json-actions')).toBeInTheDocument());
+
+		const button = within(getByTestId('ndv-json-actions')).getByRole('button');
+
+		await fireEvent.click(button);
+
+		expect(copy).toHaveBeenCalledWith(
+			JSON.stringify(
+				{
+					id: 1,
+					password: '***',
+					token: '***',
+				},
+				null,
+				2,
+			),
+		);
+	});
+
+	it.each([
+		['masked key', '[0].password', '***'],
+		['nested object', '[0].creds', JSON.stringify({ token: '***' }, null, 2)],
+		[
+			'whole item',
+			'[0]',
+			JSON.stringify({ id: 3, username: 'ada', password: '***', creds: { token: '***' } }, null, 2),
+		],
+	])(
+		'should copy the selected %s from the masked data on screen',
+		async (_, selectedJsonPath, expected) => {
+			const { pinia, activeNode } = await createPiniaWithActiveNode([
+				{
+					json: {
+						id: 3,
+						username: 'ada',
+						password: 'demo-password-123',
+						creds: { token: 'demo-token-456' },
+					},
+				},
+			]);
+			const renderComponent = createComponentRenderer(RunDataJsonActions, {
+				props: {
+					node: activeNode ?? undefined,
+					paneType: 'input',
+					pushRef: 'ref',
+					distanceFromActive: 0,
+					selectedJsonPath,
+					jsonData: [{ id: 3, username: 'ada', password: '***', creds: { token: '***' } }],
+					outputIndex: 0,
+					runIndex: 1,
+					displayMaskedFieldNames: new Set(['password', 'token']),
+				},
+				global: {
+					provide: {
+						[WorkflowIdKey as unknown as string]: computed(() => '1'),
+					},
+					mocks: {
+						$route: {
+							name: VIEWS.WORKFLOW,
+						},
+					},
+				},
+			});
+
+			renderComponent({
+				pinia,
+			});
+
+			await waitFor(() =>
+				expect(screen.getByText(i18n.baseText('runData.copyValue'))).toBeInTheDocument(),
+			);
+
+			await fireEvent.click(screen.getByText(i18n.baseText('runData.copyValue')));
+
+			expect(copy).toHaveBeenCalledWith(expected);
+			expect(copy).not.toHaveBeenCalledWith(
+				expect.stringMatching(/demo-password-123|demo-token-456/),
+			);
+		},
+	);
 });

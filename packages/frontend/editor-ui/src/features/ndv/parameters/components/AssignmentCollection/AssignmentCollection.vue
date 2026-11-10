@@ -209,6 +209,7 @@ function optionSelected(action: string) {
 							:class="$style.assignment"
 							:is-read-only="isReadOnly"
 							:disable-type="disableType"
+							:node="node"
 							@update:model-value="(value) => onAssignmentUpdate(index, value)"
 							@remove="() => onAssignmentRemove(index)"
 						>

@@ -14,6 +14,8 @@ import Draggable from '@/app/components/Draggable.vue';
 import MappingPill from './MappingPill.vue';
 import TextWithHighlights from './TextWithHighlights.vue';
 import BinaryEntryDataTable from './BinaryEntryDataTable.vue';
+import MaskedValueMarker from './MaskedValueMarker.vue';
+import { getMaskedFieldNames, isMaskedValue } from '@/features/ndv/runData/maskedValue';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useExecutionHelpers } from '@/features/execution/executions/composables/useExecutionHelpers';
@@ -40,6 +42,7 @@ type Props = {
 	compact?: boolean;
 	disableHoverHighlight?: boolean;
 	collapsingColumnName: string | null;
+	displayMaskedFieldNames?: ReadonlySet<string>;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -52,6 +55,7 @@ const props = withDefaults(defineProps<Props>(), {
 	headerBgColor: 'base',
 	disableHoverHighlight: false,
 	compact: false,
+	displayMaskedFieldNames: undefined,
 });
 const emit = defineEmits<{
 	activeRowChanged: [row: number | null];
@@ -95,6 +99,7 @@ const canDraggableDrop = computed(() => ndvStore.canDraggableDrop);
 const draggableStickyPosition = computed(() => ndvStore.draggableStickyPos);
 const pairedItemMappings = computed(() => workflowsStore.workflowExecutionPairedItemMappings);
 const tableData = computed(() => convertToTable(props.inputData));
+const maskedFieldNames = computed(() => getMaskedFieldNames(props.node));
 const collapsingColumnIndex = computed(() => {
 	if (!props.collapsingColumnName) {
 		return -1;
@@ -259,6 +264,13 @@ function isEmpty(value: unknown): boolean {
 		(typeof value === 'object' && value !== null && Object.keys(value).length === 0) ||
 		value === null ||
 		value === undefined
+	);
+}
+
+function isMasked(key: unknown, value: unknown): boolean {
+	return (
+		isMaskedValue(maskedFieldNames.value, key, value) ||
+		isMaskedValue(props.displayMaskedFieldNames, key, value)
 	);
 }
 
@@ -722,12 +734,14 @@ watch(
 						@mouseenter="onMouseEnterCell"
 						@mouseleave="onMouseLeaveCell"
 					>
-						<TextWithHighlights
-							v-if="isSimple(data)"
-							:content="getValueToRender(data)"
-							:search="search"
-							:class="{ [$style.value]: true, [$style.empty]: isEmpty(data) }"
-						/>
+						<template v-if="isSimple(data)">
+							<TextWithHighlights
+								:content="getValueToRender(data)"
+								:search="search"
+								:class="{ [$style.value]: true, [$style.empty]: isEmpty(data) }"
+							/>
+							<MaskedValueMarker v-if="isMasked(tableData.columns[index2], data)" />
+						</template>
 						<N8nTree v-else-if="isObject(data)" :node-class="$style.nodeClass" :value="data">
 							<template #label="{ label, path }">
 								<TextWithHighlights
@@ -752,12 +766,13 @@ watch(
 								<BinaryEntryDataTable :value="value" />
 							</template>
 
-							<template #value="{ value }">
+							<template #value="{ value, label }">
 								<TextWithHighlights
 									:content="getValueToRender(value)"
 									:search="search"
 									:class="{ [$style.nestedValue]: true, [$style.empty]: isEmpty(value) }"
 								/>
+								<MaskedValueMarker v-if="isMasked(label, value)" />
 							</template>
 						</N8nTree>
 					</td>

@@ -5,7 +5,7 @@ import { useBinaryDataAccessTooltip } from '@/features/ndv/shared/composables/us
 import useEnvironmentsStore from '@/features/settings/environments.ee/environments.store';
 import type { IUpdateInformation } from '@/Interface';
 import { useI18n } from '@n8n/i18n';
-import type { AssignmentValue, INodeProperties } from 'n8n-workflow';
+import type { AssignmentValue, INode, INodeProperties } from 'n8n-workflow';
 import { computed, ref, watch } from 'vue';
 import InputTriple from '../InputTriple/InputTriple.vue';
 import ParameterInputFull from '../ParameterInputFull.vue';
@@ -18,6 +18,7 @@ import { propertyNameFromExpression } from '@/app/utils/mappingUtils';
 import { N8nIconButton, N8nTooltip } from '@n8n/design-system';
 import { typeFromExpression } from '../../utils/assignmentCollection.utils';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { getMaskedFieldNames, isMaskedFieldName } from '@/features/ndv/runData/maskedValue';
 
 interface Props {
 	path: string;
@@ -27,6 +28,7 @@ interface Props {
 	disableType?: boolean;
 	isReadOnly?: boolean;
 	index?: number;
+	node?: INode | null;
 }
 
 const props = defineProps<Props>();
@@ -84,6 +86,10 @@ const nameParameter = computed<INodeProperties>(() => ({
 	type: 'string',
 }));
 
+const maskedFieldNames = computed(() => getMaskedFieldNames(props.node));
+
+const hideValue = computed(() => isMaskedFieldName(maskedFieldNames.value, assignment.value.name));
+
 const valueParameter = computed<INodeProperties>(() => {
 	const placeholder =
 		assignment.value.type === 'binary'
@@ -95,6 +101,7 @@ const valueParameter = computed<INodeProperties>(() => {
 		default: '',
 		placeholder,
 		...assignmentTypeToNodeProperty(assignment.value.type ?? 'string'),
+		...(hideValue.value ? { typeOptions: { password: true } } : {}),
 	};
 });
 
